@@ -10,9 +10,7 @@ export abstract class AvatarBase extends React.Component<{ clippyAgent: string }
     goal: string | null = null;
     backstory: string | null = null;
     private agentInstance: any | null = null;  // No longer static
-    state = {
-        isIdle: true // Assume the avatar starts in an idle state
-    };
+    isIdle: boolean = true;
 
     constructor(props: { clippyAgent: string }) {
         super(props);
@@ -24,8 +22,23 @@ export abstract class AvatarBase extends React.Component<{ clippyAgent: string }
     loadAgent = () => {
         clippy.load(this.props.clippyAgent, (agent: any) => {
             this.agentInstance = agent; // Each instance gets its own agent
-            //agent.show();
             this.onLoad();
+            // Setup an interval or a similar method to monitor the queue length
+            const queueMonitor = setInterval(() => {
+                if (this.agentInstance && this.agentInstance._queue._queue.length === 0) {
+                    if (!this.isIdle) {
+                        console.log(`${this.name} agent is now idle.`);
+                        this.isIdle = true;
+                    }
+                    //clearInterval(queueMonitor);  // Clear the interval when not needed
+                } else {
+                    if (this.isIdle) {
+                        console.log('this.agentInstance._queue._queue',this.agentInstance._queue._queue);
+                        console.log(`${this.name} agent is now busy.`);
+                        this.isIdle = false;
+                    }
+                }
+            }, 100);  // Check every 100ms
         }, () => {
             console.error('Failed to load Clippy agent:', this.props.clippyAgent);
         }, '/agents/');
@@ -36,12 +49,19 @@ export abstract class AvatarBase extends React.Component<{ clippyAgent: string }
 
     show = () => {
         this.agentInstance?.show();
-        this.agentInstance?.play('Greet');
     }
 
     hide = () => {
         this.agentInstance?.stop();
         this.agentInstance?.hide();
+    }
+
+    idle = () => {
+        this.agentInstance?.animate();
+    }
+
+    stop = () => {
+        this.agentInstance?.stop();
     }
 
     moveTo = (x: number, y: number) => {
@@ -52,20 +72,22 @@ export abstract class AvatarBase extends React.Component<{ clippyAgent: string }
 
     hello = () => {
         this.agentInstance?.show();
-        //this.agentInstance?.play('Greet');
-        this.say(`Hello, I am ${this.name}, the ${this.role}.`);
+        this.speak(`Hello, I am ${this.name}, the ${this.role}.`);
+        this.agentInstance?.play('Greet');
     }
 
-    say = (message: string) => {
-        this.agentInstance?.speak(message);
+    speak = (text: string) => {
+        this.agentInstance.speak(text);
     }
+
+    say = (text: string) => this.speak(text);
 
     AgentComponent = () => {
         React.useEffect(() => {
             this.loadAgent();
             return () => {
-                this.agentInstance?.stop();
-                this.agentInstance?.hide();
+                //this.agentInstance?.stop();
+                //this.agentInstance?.hide();
             }
         }, []);
 

@@ -2,10 +2,11 @@ import React, { useRef } from 'react';
 import logo from './logo.svg';
 import './App.css';
 import { AccountManager } from './avatars/AccountManager';
+import { Designer } from './avatars/Designer';
 
 function App() {
   const accountManager = useRef(new AccountManager({ clippyAgent: 'Peedy' })).current;
-  const designer = useRef(new AccountManager({ clippyAgent: 'Rocky' })).current;
+  const designer = useRef(new Designer({ clippyAgent: 'Rocky' })).current;
   return (
     <div className="App">
       <header className="App-header">
@@ -14,6 +15,9 @@ function App() {
         <img src={logo} className="App-logo" alt="logo" />
         <button onClick={async()=>{
           const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+          accountManager.stop();
+          designer.stop();
+
           accountManager.hello();
           accountManager.moveTo(100,100);
           await sleep(7000);
