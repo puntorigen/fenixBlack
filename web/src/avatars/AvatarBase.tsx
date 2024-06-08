@@ -64,10 +64,18 @@ export abstract class AvatarBase extends React.Component<{ clippyAgent: string }
         this.agentInstance?.stop();
     }
 
+    wait = (ms: number) => {
+        this.agentInstance?.delay(ms);
+    }
+
     moveTo = (x: number, y: number) => {
-        this.agentInstance?.stop();
+        this.agentInstance?.stopCurrent();
         this.agentInstance?.moveTo(x, y);
         this.agentInstance?.animate();
+    }
+
+    lookTo = (x: number, y: number) => {
+        this.agentInstance?.gestureAt(x, y);
     }
 
     hello = () => {

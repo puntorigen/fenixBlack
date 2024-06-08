@@ -5,27 +5,27 @@ import { AccountManager } from './avatars/AccountManager';
 import { Designer } from './avatars/Designer';
 
 function App() {
-  const accountManager = useRef(new AccountManager({ clippyAgent: 'Peedy' })).current;
-  const designer = useRef(new Designer({ clippyAgent: 'Rocky' })).current;
+  const accountManager = useRef(new AccountManager({ clippyAgent: 'Clippy' })).current;
+  const designer = useRef(new Designer({ clippyAgent: 'Links' })).current;
   return (
     <div className="App">
       <header className="App-header">
         <accountManager.AgentComponent/>
         <designer.AgentComponent/>
         <img src={logo} className="App-logo" alt="logo" />
-        <button onClick={async()=>{
-          const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+        <button onClick={()=>{
           accountManager.stop();
           designer.stop();
 
-          accountManager.hello();
+          accountManager.show();
           accountManager.moveTo(100,100);
-          await sleep(7000);
-          //await sleep(4000);
-          designer.show();
-          designer.moveTo(200,130);
-          designer.say("Hola soy el diseñador, cómo estas?");
+          accountManager.lookTo(300,130);
           accountManager.say("Hola diseñador, soy el ejecutivo de cuentas.");
+
+          designer.show();
+          designer.moveTo(300,130);
+          //designer.wait(2000);
+          designer.say("Hola soy el diseñador, cómo estas?");
         }}>Show</button>
       </header>
     </div>
