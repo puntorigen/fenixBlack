@@ -52,14 +52,21 @@ function App() {
         <Expert ref={expert2} bgColor="#000" hairColor="#964B00" style={{ marginLeft: '20px' }}/>
       </div>
       <div>
-        <button onClick={()=>{
-            expert.current.speak("Hello, my name is Expert 1. I am a nice avatar expert.");
+        <button onClick={async()=>{
             expert2.current.speak("Hello, my name is Expert 2. I am a nice avatar expert. This is a much longer string of text so to test how it is displayed. Hello, my name is Expert 2. I am a nice avatar expert. This is a much longer string of text so to test how it is displayed.");
-            setTimeout(() => {
-                expert.current.lookRight();
+            expert.current.speak("Searching websites for more information.",300,500);
+            expert.current.avatarSize('25%','#29465B');
+            await expert.current.play('searching');
+            setTimeout(async() => {
+                //expert.current.lookRight();
                 expert2.current.lookLeft();
-                expert.current.play('searching');
-            }, 1000);
+                expert.current.avatarSize('40%');
+                expert.current.speak("Reading the contents ..",340,700);
+                await expert.current.play('analyzing','#FFFFFF',true);
+                setTimeout(async() => {
+                    expert.current.avatarSize('100%');
+                }, 5000);
+            }, 3000);
         }}>Test</button>
       </div>
     </div>

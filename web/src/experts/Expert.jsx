@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import NiceAvatar from '@nice-avatar-svg/react';
 import lottie from 'lottie-web';
+import { replaceColor, flatten } from 'lottie-colorify';
 
 const Expert = forwardRef(({
     bgColor="#6BD9E9", 
@@ -18,12 +19,17 @@ const Expert = forwardRef(({
     const [mouthStyle, setMouthStyle] = useState('smile');
     const [orientation, setOrientation] = useState({ flipped: false, look: 'center' }); 
     const [currentBgColor, setCurrentBgColor] = useState(bgColor);
+    const [avatarBgColor, setAvatarBgColor] = useState("none"); //default transparent
+    const [avatarStyle, setAvatarStyle] = useState({ scale: 1, position: 'center' });
+    
     const animationContainer = useRef(null);
     const animationInstance = useRef(null);
+    const speakIntervalRef = useRef(null);
 
     // Calculate scale and apply horizontal flip if needed
     const scale = Math.min(parseFloat(width) / 380, parseFloat(height) / 380);
-    const transformStyle = `scale(${scale})${orientation.flipped ? ' scaleX(-1)' : ''}`;
+    const transformStyle = `scale(${scale * avatarStyle.scale})${orientation.flipped ? ' scaleX(-1)' : ''}`;
+    //const transformStyle = `scale(${scale})${orientation.flipped ? ' scaleX(-1)' : ''}`;
     const transformOrigin = `${orientation.flipped ? '56% 0%' : 'top left'}`;
 
     useEffect(() => {
@@ -34,45 +40,86 @@ const Expert = forwardRef(({
         return () => clearInterval(blinkInterval);
     }, []);
 
+    const clearSpeakInterval = () => {
+        if (speakIntervalRef.current) {
+            clearInterval(speakIntervalRef.current);
+            speakIntervalRef.current = null;
+        }
+    };
+
     const speak = (inputText, speed = 400, pause = 150) => {
+        clearSpeakInterval(); // Clear any existing interval to prevent overlap
         const words = inputText.split(" ");
         let index = 0;
-        let speakInterval = setInterval(() => {
+        speakIntervalRef.current = setInterval(() => {
             if (index < words.length) {
                 setText(words.slice(0, index + 1).join(" "));
                 setMouthStyle(prev => (prev === 'smile' ? 'laughing' : 'smile'));
                 index++;
             } else {
-                clearInterval(speakInterval);
+                clearSpeakInterval();
                 setTimeout(() => {
                     setMouthStyle('smile');
+                    setText("");
                     onSpeakEnd && onSpeakEnd();  // Call the callback function if provided
                 }, pause);
             }
         }, speed);
     };
 
-    const play = (animationName) => {
+    const play = async(animationName, flattenColor, loop=false) => {
         if (animationInstance.current) {
             animationInstance.current.destroy();  // Destroy existing animation if any
         }
         const animationPath = `/animations/${animationName}.json`;
-        setCurrentBgColor('none');  // Make avatar background translucent
-        animationInstance.current = lottie.loadAnimation({
-            container: animationContainer.current,
-            renderer: 'svg',
-            loop: true,
-            autoplay: true,
-            path: animationPath
-        });
-        animationInstance.current.addEventListener('complete', () => {
-            setCurrentBgColor(bgColor);  // Reset background color once animation is complete
+        setCurrentBgColor(bgColor);
+        if (flattenColor) { 
+            const response = await fetch(animationPath);
+            let data = await response.json();
+            animationInstance.current = lottie.loadAnimation({
+                container: animationContainer.current,
+                renderer: 'svg',
+                loop: loop,
+                autoplay: true,
+                animationData: flatten(flattenColor, data)
+            });
+        } else {
+            animationInstance.current = lottie.loadAnimation({
+                container: animationContainer.current,
+                renderer: 'svg',
+                loop: loop,
+                autoplay: true,
+                path: animationPath
+            });
+        }
+        animationInstance.current.addEventListener('enterFrame', () => {
+            //console.log('debug anim',animationInstance.current);
+            if (animationInstance.current.currentFrame >= animationInstance.current.totalFrames - 1) {
+                if (!loop) {
+                    console.log('animation ended');
+                    setCurrentBgColor(bgColor);  // Reset background color once animation is complete
+                    animationInstance.current.destroy();
+                }
+            }
         });
     };
   
+    const avatarSize = (percentage='100%', customBgColor = '#333333') => {
+        const newSize = parseFloat(percentage) / 100;
+        setAvatarStyle({ scale: newSize });
+
+        // Change the background color if the size is not 100%
+        if (percentage === '100%') {
+            setAvatarBgColor("none");  // Restore original background color
+        } else {
+            setAvatarBgColor(customBgColor);  // Set to dark grey
+        }
+    };
+
     useImperativeHandle(ref, () => ({
         speak,
         play,
+        avatarSize,
         lookLeft: () => setOrientation({ ...orientation, flipped: true }),
         lookRight: () => setOrientation({ ...orientation, flipped: false }),
         lookUp: () => setOrientation({ ...orientation, look: 'up' }),   // Additional implementation needed for visual effect
@@ -85,7 +132,7 @@ const Expert = forwardRef(({
             <div style={{ transform: transformStyle, transformOrigin: transformOrigin, position: 'relative', zIndex: 0 }}>
                 <NiceAvatar
                     shape="square"
-                    bgColor={currentBgColor}
+                    bgColor={avatarBgColor}
                     shirtColor={shirtColor}
                     skinColor={skinColor}
                     earSize="small"
