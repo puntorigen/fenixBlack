@@ -2,25 +2,40 @@ import React, { useRef } from 'react';
 import './App.css';
 import Expert from './experts/Expert'
 import { WiredCard, WiredButton, WiredInput } from 'react-wired-elements';
+import { z } from 'zod';
+import { zodToJson } from './utils/utils';
 
 function App() {
-  const expert = useRef(null);
-  const expert2 = useRef(null);
+    const expert = useRef(null);
+    const expert2 = useRef(null);
+    const brandSchema = z.object({
+        brand: z.object({
+            name: z.string().describe('The name of the brand'),
+            logo: z.string().describe('The URL of the logo image'),
+            colors: z.object({
+                primary: z.string().describe('The primary color for the brand'),
+                secondary: z.string().describe('The secondary color for the brand'),
+            }).describe('The main colors for the brand')
+        })
+    });
+    const test = zodToJson(brandSchema);
+    console.log('test zod to json',test);
+
   return (
     <div className="App">
       <header className="App-header">
         AI Multi Expert System<br/><br/>
       </header>
       {/* 
-        // brandSchema = zod.object({
-        //     brand: zod.object({
-        //         name: zod.string().describe('The name of the brand'),
-        //         logo: zod.string().describe('The URL of the logo image'),
-        //         colors: zod.object({
-        //             primary: zod.string().describe('The primary color for the brand'),
-        //             secondary: zod.string().describe('The secondary color for the brand'),
+        // brandSchema = z.object({
+        //     brand: z.object({
+        //         name: z.string().describe('The name of the brand'),
+        //         logo: z.string().describe('The URL of the logo image'),
+        //         colors: z.object({
+        //             primary: z.string().describe('The primary color for the brand'),
+        //             secondary: z.string().describe('The secondary color for the brand'),
         //         }).describe('The main colors for the brand') ,
-        //         fonts: zod.array(zod.string())
+        //         fonts: z.array(zod.string())
         //     }),
         //     products: zod.array(zod.object({
         //         name: zod.string(),
