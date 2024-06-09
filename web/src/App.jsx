@@ -48,11 +48,18 @@ function App() {
       <div>
       </div>
       <div>
-        <Expert ref={expert} flipped={false}/>
-        <Expert ref={expert2} flipped={false} bgColor="#000" hairColor="#964B00" style={{ marginLeft: '20px' }}/>
+        <Expert ref={expert}/>
+        <Expert ref={expert2} bgColor="#000" hairColor="#964B00" style={{ marginLeft: '20px' }}/>
       </div>
       <div>
-    
+        <button onClick={()=>{
+            expert.current.speak("Hello, my name is Expert 1. I am a nice avatar expert.");
+            expert2.current.speak("Hello, my name is Expert 2. I am a nice avatar expert. This is a much longer string of text so to test how it is displayed. Hello, my name is Expert 2. I am a nice avatar expert. This is a much longer string of text so to test how it is displayed.");
+            setTimeout(() => {
+                expert.current.lookRight();
+                expert2.current.lookLeft();
+            }, 1000);
+        }}>Test</button>
       </div>
     </div>
   );

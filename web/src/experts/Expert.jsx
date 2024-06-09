@@ -9,18 +9,18 @@ const Expert = forwardRef(({
     initialText="", 
     width = "300px",  // default width
     height = "300px",  // default height
-    flipped = false,
     onSpeakEnd,
     style = {}
 }, ref) => {
     const [text, setText] = useState(initialText);
     const [eyesStyle, setEyesStyle] = useState('circle');
     const [mouthStyle, setMouthStyle] = useState('smile');
+    const [orientation, setOrientation] = useState({ flipped: false, look: 'center' }); 
 
     // Calculate scale and apply horizontal flip if needed
     const scale = Math.min(parseFloat(width) / 380, parseFloat(height) / 380);
-    const transformStyle = `scale(${scale})${flipped ? ' scaleX(-1)' : ''}`;
-    const transformOrigin = `${flipped ? '56% 0%' : 'top left'}`;
+    const transformStyle = `scale(${scale})${orientation.flipped ? ' scaleX(-1)' : ''}`;
+    const transformOrigin = `${orientation.flipped ? '56% 0%' : 'top left'}`;
 
     useEffect(() => {
         const blinkInterval = setInterval(() => {
@@ -49,7 +49,11 @@ const Expert = forwardRef(({
     };
   
     useImperativeHandle(ref, () => ({
-        speak
+        speak,
+        lookLeft: () => setOrientation({ ...orientation, flipped: true }),
+        lookRight: () => setOrientation({ ...orientation, flipped: false }),
+        lookUp: () => setOrientation({ ...orientation, look: 'up' }),   // Additional implementation needed for visual effect
+        lookDown: () => setOrientation({ ...orientation, look: 'down' })  // Additional implementation needed for visual effect
     }));
 
     return (
