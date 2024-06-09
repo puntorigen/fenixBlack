@@ -14,6 +14,7 @@
     "@types/react-dom": "^18.3.0",
     "clippyjs": "^0.0.3",
     "lodash": "^4.17.21",
+    "lottie-web": "^5.12.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-nice-avatar": "^1.5.0",

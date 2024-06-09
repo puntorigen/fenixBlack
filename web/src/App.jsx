@@ -58,6 +58,7 @@ function App() {
             setTimeout(() => {
                 expert.current.lookRight();
                 expert2.current.lookLeft();
+                expert.current.play('searching');
             }, 1000);
         }}>Test</button>
       </div>

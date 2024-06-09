@@ -1,5 +1,6 @@
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import NiceAvatar from '@nice-avatar-svg/react';
+import lottie from 'lottie-web';
 
 const Expert = forwardRef(({
     bgColor="#6BD9E9", 
@@ -16,6 +17,9 @@ const Expert = forwardRef(({
     const [eyesStyle, setEyesStyle] = useState('circle');
     const [mouthStyle, setMouthStyle] = useState('smile');
     const [orientation, setOrientation] = useState({ flipped: false, look: 'center' }); 
+    const [currentBgColor, setCurrentBgColor] = useState(bgColor);
+    const animationContainer = useRef(null);
+    const animationInstance = useRef(null);
 
     // Calculate scale and apply horizontal flip if needed
     const scale = Math.min(parseFloat(width) / 380, parseFloat(height) / 380);
@@ -47,9 +51,28 @@ const Expert = forwardRef(({
             }
         }, speed);
     };
+
+    const play = (animationName) => {
+        if (animationInstance.current) {
+            animationInstance.current.destroy();  // Destroy existing animation if any
+        }
+        const animationPath = `/animations/${animationName}.json`;
+        setCurrentBgColor('none');  // Make avatar background translucent
+        animationInstance.current = lottie.loadAnimation({
+            container: animationContainer.current,
+            renderer: 'svg',
+            loop: true,
+            autoplay: true,
+            path: animationPath
+        });
+        animationInstance.current.addEventListener('complete', () => {
+            setCurrentBgColor(bgColor);  // Reset background color once animation is complete
+        });
+    };
   
     useImperativeHandle(ref, () => ({
         speak,
+        play,
         lookLeft: () => setOrientation({ ...orientation, flipped: true }),
         lookRight: () => setOrientation({ ...orientation, flipped: false }),
         lookUp: () => setOrientation({ ...orientation, look: 'up' }),   // Additional implementation needed for visual effect
@@ -58,10 +81,11 @@ const Expert = forwardRef(({
 
     return (
         <div style={{ position: 'relative', width, height, display: 'inline-block', fontSize: 0, overflow: 'visible', ...style }}>
+            <div ref={animationContainer} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, backgroundColor: currentBgColor }} />
             <div style={{ transform: transformStyle, transformOrigin: transformOrigin, position: 'relative', zIndex: 0 }}>
                 <NiceAvatar
                     shape="square"
-                    bgColor={bgColor}
+                    bgColor={currentBgColor}
                     shirtColor={shirtColor}
                     skinColor={skinColor}
                     earSize="small"
