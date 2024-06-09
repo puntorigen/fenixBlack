@@ -15,7 +15,8 @@ function App() {
             colors: z.object({
                 primary: z.string().describe('The primary color for the brand'),
                 secondary: z.string().describe('The secondary color for the brand'),
-            }).describe('The main colors for the brand')
+            }).describe('The main colors for the brand'),
+            fonts: z.array(z.string()).describe('The fonts used by the brand')
         })
     });
     const test = zodToJson(brandSchema);
@@ -35,13 +36,13 @@ function App() {
         //             primary: z.string().describe('The primary color for the brand'),
         //             secondary: z.string().describe('The secondary color for the brand'),
         //         }).describe('The main colors for the brand') ,
-        //         fonts: z.array(zod.string())
+        //         fonts: z.array(z.string())
         //     }),
-        //     products: zod.array(zod.object({
-        //         name: zod.string(),
-        //         description: zod.string(),
-        //         price: zod.number(),
-        //         image: zod.string(),
+        //     products: z.array(z.object({
+        //         name: z.string(),
+        //         description: z.string(),
+        //         price: z.number(),
+        //         image: z.string(),
         //     }))
         // });)
       // info = await factory.current.start("brandBuilder", 
