@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@nice-avatar-svg/react": "^0.0.5",
     "@react95/clippy": "^1.0.13",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
@@ -15,6 +16,7 @@
     "jquery": "^3.7.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-nice-avatar": "^1.5.0",
     "react-scripts": "5.0.1",
     "typescript": "^4.9.5",
     "web-vitals": "^2.1.4"

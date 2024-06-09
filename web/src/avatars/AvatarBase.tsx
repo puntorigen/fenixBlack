@@ -11,6 +11,7 @@ export abstract class AvatarBase extends React.Component<{ clippyAgent: string }
     backstory: string | null = null;
     private agentInstance: any | null = null;  // No longer static
     isIdle: boolean = true;
+    visible: boolean = false;
 
     constructor(props: { clippyAgent: string }) {
         super(props);
@@ -48,12 +49,18 @@ export abstract class AvatarBase extends React.Component<{ clippyAgent: string }
     onLoad = () => {}
 
     show = () => {
-        this.agentInstance?.show();
+        if (!this.visible) {
+            this.agentInstance?.show();
+            this.visible = true;
+        }
     }
-
+    
     hide = () => {
-        this.agentInstance?.stop();
-        this.agentInstance?.hide();
+        if (this.visible) {
+            this.agentInstance?.stop();
+            this.agentInstance?.hide();
+            this.visible = false;
+        }
     }
 
     idle = () => {
@@ -61,11 +68,30 @@ export abstract class AvatarBase extends React.Component<{ clippyAgent: string }
     }
 
     stop = () => {
-        this.agentInstance?.stop();
+        this.agentInstance?.stopCurrent();
     }
 
-    wait = (ms: number) => {
-        this.agentInstance?.delay(ms);
+    play = (animation: string) => {
+        let availableAnimations = this.agentInstance?.animations();
+        // transform availableAnimations elements to lowercase
+        let availableAnimations_LC = availableAnimations?.map((a: string) => a.toLowerCase());
+        // check if lowercase given animation is available
+        if (!availableAnimations_LC?.includes(animation.toLowerCase())) {
+            console.log('availableAnimations', availableAnimations);
+            console.error(`Animation ${animation} not available for ${this.name} agent.`);
+            return;
+        } else {
+            // get the index of the given animation in the availableAnimations_LC array
+            let index = availableAnimations_LC?.indexOf(animation.toLowerCase());
+            // get the original case of the animation
+            let originalCase = availableAnimations?.[index];
+            //console.log(`Playing animation ${originalCase} for ${this.name} agent.`)
+            this.agentInstance?.play(originalCase);
+        }
+    }
+
+    animations = () => {
+        return this.agentInstance?.animations();
     }
 
     moveTo = (x: number, y: number) => {
@@ -79,7 +105,7 @@ export abstract class AvatarBase extends React.Component<{ clippyAgent: string }
     }
 
     hello = () => {
-        this.agentInstance?.show();
+        this.show();
         this.speak(`Hello, I am ${this.name}, the ${this.role}.`);
         this.agentInstance?.play('Greet');
     }
