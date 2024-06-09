@@ -13,14 +13,15 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "clippyjs": "^0.0.3",
-    "jquery": "^3.7.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-nice-avatar": "^1.5.0",
     "react-scripts": "5.0.1",
     "react-wired-elements": "^0.1.6",
     "typescript": "^4.9.5",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "zod": "^3.23.8",
+    "zod-to-json-schema": "^3.23.0"
   },
   "scripts": {
     "start": "react-scripts start",

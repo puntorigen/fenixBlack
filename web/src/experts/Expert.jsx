@@ -10,7 +10,8 @@ const Expert = forwardRef(({
     width = "300px",  // default width
     height = "300px",  // default height
     flipped = false,
-    onSpeakEnd
+    onSpeakEnd,
+    style = {}
 }, ref) => {
     const [text, setText] = useState(initialText);
     const [eyesStyle, setEyesStyle] = useState('circle');
@@ -52,7 +53,7 @@ const Expert = forwardRef(({
     }));
 
     return (
-        <div style={{ position: 'relative', width, height, display: 'inline-block', fontSize: 0, overflow: 'visible', marginLeft: '20px' }}>
+        <div style={{ position: 'relative', width, height, display: 'inline-block', fontSize: 0, overflow: 'visible', ...style }}>
             <div style={{ transform: transformStyle, transformOrigin: transformOrigin, position: 'relative', zIndex: 0 }}>
                 <NiceAvatar
                     shape="square"
