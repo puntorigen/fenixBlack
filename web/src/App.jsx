@@ -2,23 +2,13 @@ import React, { useRef } from 'react';
 import './App.css';
 import Expert from './experts/Expert'
 import { WiredCard, WiredButton, WiredInput } from 'react-wired-elements';
-import { z } from 'zod';
+import { brandSchema, brochureSchema } from './schemas';
 import { zodToJson } from './utils/utils';
 
 function App() {
     const expert = useRef(null);
     const expert2 = useRef(null);
-    const brandSchema = z.object({
-        brand: z.object({
-            name: z.string().describe('The name of the brand'),
-            logo: z.string().describe('The URL of the logo image'),
-            colors: z.object({
-                primary: z.string().describe('The primary color for the brand'),
-                secondary: z.string().describe('The secondary color for the brand'),
-            }).describe('The main colors for the brand'),
-            fonts: z.array(z.string()).describe('The fonts used by the brand')
-        })
-    });
+
     const test = zodToJson(brandSchema);
     console.log('test zod to json',test);
 
@@ -28,23 +18,6 @@ function App() {
         AI Multi Expert System<br/><br/>
       </header>
       {/* 
-        // brandSchema = z.object({
-        //     brand: z.object({
-        //         name: z.string().describe('The name of the brand'),
-        //         logo: z.string().describe('The URL of the logo image'),
-        //         colors: z.object({
-        //             primary: z.string().describe('The primary color for the brand'),
-        //             secondary: z.string().describe('The secondary color for the brand'),
-        //         }).describe('The main colors for the brand') ,
-        //         fonts: z.array(z.string())
-        //     }),
-        //     products: z.array(z.object({
-        //         name: z.string(),
-        //         description: z.string(),
-        //         price: z.number(),
-        //         image: z.string(),
-        //     }))
-        // });)
       // info = await factory.current.start("brandBuilder", 
             " for www.xx.com",
             brandSchema
@@ -52,10 +25,7 @@ function App() {
       // ask the user to choose a product, or use the first one
       // brochure = await factory.current.start("brochure", 
             `using the {brand} information, design a 1 page PDF brochure for product ${info.products[0].name}`,
-            zod.object({
-                title: zod.string('Brochure title'),
-                base64: zod.string('PDF base64')
-            })
+            brochureSchema
         );
 
       <Factory industry="marketing" ref={factory}>
