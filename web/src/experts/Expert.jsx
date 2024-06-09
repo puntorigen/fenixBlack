@@ -4,20 +4,23 @@ import NiceAvatar from '@nice-avatar-svg/react';
 const Expert = forwardRef(({
     bgColor="#6BD9E9", 
     hairColor="#000", 
-    shirtColor="#00DD00", 
+    shirtColor="#FF0000", 
     skinColor="#F9C9B6", 
     initialText="", 
     width = "300px",  // default width
     height = "300px",  // default height
+    flipped = false,
     onSpeakEnd
 }, ref) => {
     const [text, setText] = useState(initialText);
     const [eyesStyle, setEyesStyle] = useState('circle');
     const [mouthStyle, setMouthStyle] = useState('smile');
 
-    // Calculate scale based on the desired size and the default size of the avatar (380x380)
+    // Calculate scale and apply horizontal flip if needed
     const scale = Math.min(parseFloat(width) / 380, parseFloat(height) / 380);
-  
+    const transformStyle = `scale(${scale})${flipped ? ' scaleX(-1)' : ''}`;
+    const transformOrigin = `${flipped ? '56% 0%' : 'top left'}`;
+
     useEffect(() => {
         const blinkInterval = setInterval(() => {
             setEyesStyle(prev => (prev === 'circle' ? 'smiling' : 'circle'));
@@ -49,8 +52,8 @@ const Expert = forwardRef(({
     }));
 
     return (
-        <div style={{ position: 'relative', width, height, display: 'inline-block', fontSize: 0, overflow: 'visible' }}>
-            <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', position: 'relative', zIndex: 0 }}>
+        <div style={{ position: 'relative', width, height, display: 'inline-block', fontSize: 0, overflow: 'visible', marginLeft: '20px' }}>
+            <div style={{ transform: transformStyle, transformOrigin: transformOrigin, position: 'relative', zIndex: 0 }}>
                 <NiceAvatar
                     shape="square"
                     bgColor={bgColor}
@@ -78,10 +81,11 @@ const Expert = forwardRef(({
                     textAlign: 'center',
                     backgroundColor: 'rgba(0, 0, 0, 0.5)',
                     color: 'white',
-                    padding: '5px 0px 10px 0px',
+                    padding: '5px 5px 10px 5px',
                     maxWidth: width,
+                    fontFamily: 'Arial, sans-serif',
                     fontSize: `${scale * 20}px`,  // Dynamically adjust font size based on scale
-                    zIndex: 1
+                    zIndex: 1,
                 }}>
                     {text}
                 </div>

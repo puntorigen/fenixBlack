@@ -18,6 +18,7 @@
     "react-dom": "^18.3.1",
     "react-nice-avatar": "^1.5.0",
     "react-scripts": "5.0.1",
+    "react-wired-elements": "^0.1.6",
     "typescript": "^4.9.5",
     "web-vitals": "^2.1.4"
   },
