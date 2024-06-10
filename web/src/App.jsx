@@ -48,8 +48,8 @@ function App() {
       <div>
       </div>
       <div>
-        <Expert ref={expert}/>
-        <Expert ref={expert2} bgColor="#000" hairColor="#964B00" style={{ marginLeft: '20px' }}/>
+        <Expert ref={expert} label="Account Manager"/>
+        <Expert ref={expert2} label="Designer" bgColor="#000" hairColor="#964B00" style={{ marginLeft: '20px' }}/>
       </div>
       <div>
         <button onClick={async()=>{

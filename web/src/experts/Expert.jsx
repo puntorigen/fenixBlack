@@ -11,6 +11,7 @@ const Expert = forwardRef(({
     initialText="", 
     width = "300px",  // default width
     height = "300px",  // default height
+    label = "",
     onSpeakEnd,
     style = {}
 }, ref) => {
@@ -149,6 +150,7 @@ const Expert = forwardRef(({
 
     return (
         <div style={{ position: 'relative', width, height, display: 'inline-block', fontSize: 0, overflow: 'visible', ...style }}>
+            { label && (<div className="nameTag">{label}</div>) }
             <div ref={animationContainer} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, backgroundColor: currentBgColor }} />
             <div style={{ transform: transformStyle, transformOrigin: transformOrigin, position: 'relative', zIndex: 0, ...transitionStyle }}>
                 <NiceAvatar
