@@ -53,20 +53,25 @@ function App() {
       </div>
       <div>
         <button onClick={async()=>{
+            const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+            await expert.current.play('searching',{ bgcolor:'#FFFFFF' },true);
+            expert.current.speak("Searching websites for more information.",400,150,2000);
+            expert.current.avatarSize('20%','#29465B');
+            expert2.current.lookLeft();
+            await sleep(5500);
+            expert.current.avatarSize('100%');
+            await expert.current.play('analyzing',{ tint:'#FFFFFF' },true);
+            expert.current.speak("Reading the contents ..",340,700);
+            await sleep(6000);
+            expert.current.speak("Writing a beautiful message ..",340,700);
+            await expert.current.play('writing',null,true);
+            expert.current.avatarSize('30%');
+            
+            //await expert2.current.play('reading',null,true);
             expert2.current.speak("Hello, my name is Expert 2. I am a nice avatar expert. This is a much longer string of text so to test how it is displayed. Hello, my name is Expert 2. I am a nice avatar expert. This is a much longer string of text so to test how it is displayed.");
-            expert.current.speak("Searching websites for more information.",300,500);
-            expert.current.avatarSize('25%','#29465B');
-            await expert.current.play('searching');
-            setTimeout(async() => {
-                //expert.current.lookRight();
-                expert2.current.lookLeft();
-                expert.current.avatarSize('40%');
-                expert.current.speak("Reading the contents ..",340,700);
-                await expert.current.play('analyzing','#FFFFFF',true);
-                setTimeout(async() => {
-                    expert.current.avatarSize('100%');
-                }, 5000);
-            }, 3000);
+            
+            await sleep(7000);
+            //expert.current.avatarSize('100%');
         }}>Test</button>
       </div>
     </div>
