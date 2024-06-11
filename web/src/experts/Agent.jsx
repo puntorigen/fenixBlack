@@ -1,20 +1,25 @@
-import React, { forwardRef, useRef, useImperativeHandle } from 'react';
+import React, { forwardRef, useRef, useEffect, useImperativeHandle } from 'react';
 import Puppet from './Puppet';
 
 const Agent = forwardRef(({
-    name,
-    age,
-    gender,
-    style,
-    onAnimationEnd,
+    bgColor="#6BD9E9", 
+    hairColor="#000", 
+    shirtColor="#FF0000", 
+    skinColor="#F9C9B6",
+    width = "300px",  // default width
+    height = "300px",  // default height
+    style = {},
+    meta = {},
+    tools = {},
+    onSpeakEnd,
 }, ref) => {
     const puppetRef = useRef();
 
     const setup = () => {
         // Example: set up Puppet based on Agent's props like age and gender
         if (puppetRef.current) {
-            puppetRef.current.setAge(age);
-            puppetRef.current.setGender(gender);
+            //puppetRef.current.setAge(age);
+            //puppetRef.current.setGender(gender);
         }
     };
 
@@ -23,16 +28,28 @@ const Agent = forwardRef(({
         // Inherit Puppet methods
         ...puppetRef.current,
         // Custom methods
-        meta: () => {
-            return {
-                name,
-                age,
+        meta: () => meta,
+        play: async(tool='search',bgcolor='#6BD9E9',textDelay=2000) => {
+            if (puppetRef.current) {
+                if (tool in tools) {
+                    let animKey = Object.keys(tools[tool])[0]; // searching
+                    let text = tools[tool][animKey];
+                    let extra = {};
+                    if (animKey.indexOf(':') !== -1) {
+                        extra = { tint: animKey.split(':')[1] };
+                        animKey = animKey.split(':')[0];
+                    }
+                    await puppetRef.current.play(animKey,{ bgcolor, ...extra },true);
+                    puppetRef.current.avatarSize('20%','#29465B');
+                    puppetRef.current.speak(text,400,150,textDelay);
+                }
             }
         },
-        play: () => {
-            if (puppetRef.current) {
-                puppetRef.current.play('smile'); // example method
-            }
+        json: () => {
+            // builds a JSON representation for the Meeting component
+            let resp = { ...meta,
+            };
+            return JSON.stringify(resp);
         }
     }));
 
@@ -43,9 +60,17 @@ const Agent = forwardRef(({
     return (
         <Puppet
             ref={puppetRef}
-            name={name}
+            label={meta?.role}
+            bgColor={bgColor}
+            hairColor={hairColor}
+            shirtColor={shirtColor}
+            skinColor={skinColor}
+            initialText={''}
+            width={width}
+            height={height}
+
             style={style}
-            onSpeakEnd={onAnimationEnd}
+            onSpeakEnd={onSpeakEnd}
             // other props that Puppet expects
         />
     );

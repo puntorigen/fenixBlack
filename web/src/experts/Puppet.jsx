@@ -141,6 +141,12 @@ const Puppet = forwardRef(({
     useImperativeHandle(ref, () => ({
         speak,
         play,
+        stop: () => {
+            clearSpeakInterval();
+            if (animationInstance.current) {
+                animationInstance.current.destroy();  // Destroy existing animation if any
+            }
+        },
         avatarSize,
         lookLeft: () => setOrientation({ ...orientation, flipped: true }),
         lookRight: () => setOrientation({ ...orientation, flipped: false }),

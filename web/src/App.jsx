@@ -1,13 +1,17 @@
 import React, { useRef } from 'react';
 import './App.css';
 import Expert from './experts/Expert'
+import AccountManager from './experts/AccountManager';
+import Meeting from './components/Meeting';
 import { WiredCard, WiredButton, WiredInput } from 'react-wired-elements';
 import { brandSchema, brochureSchema } from './schemas';
 import { zodToJson } from './utils/utils';
+import { tools } from './experts/constants';
 
 function App() {
     const expert = useRef(null);
     const expert2 = useRef(null);
+    const expert3 = useRef(null);
 
     const test = zodToJson(brandSchema);
     console.log('test zod to json',test);
@@ -48,12 +52,30 @@ function App() {
       <div>
       </div>
       <div>
-        <Expert ref={expert} label="Account Manager"/>
+        {/*<Expert ref={expert} label="Account Manager"/>
         <Expert ref={expert2} label="Designer" bgColor="#000" hairColor="#964B00" style={{ marginLeft: '20px' }}/>
+        <AccountManager ref={expert3} name="Mauricio" />
+        */}
+        <Meeting>
+          <AccountManager name="Mauricio1" />
+          <AccountManager name="Mauricio2" />
+        </Meeting>
       </div>
       <div>
+        {/** 
+         * 
+
         <button onClick={async()=>{
             const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+            await expert3.current.play(tools.search); //await anim loading
+            await sleep(2000); // in here because server needs to be able to overwrite executing action; server delay sim
+            expert3.current.avatarSize('100%');
+            expert3.current.stop();
+            await sleep(2000); // in here because server needs to be able to overwrite executing action; server delay sim
+            const expert3json = expert3.current.json();
+            console.log('expert3 JSON',expert3json);
+            await expert3.current.play(tools.scrape);
+            //
             await expert.current.play('searching',{ bgcolor:'#6BD9E9' },true);
             expert.current.speak("Searching websites for more information.",400,150,2000);
             expert.current.avatarSize('20%','#29465B');
@@ -73,7 +95,8 @@ function App() {
             await sleep(7000);
             //expert.current.avatarSize('100%');
         }}>Test</button>
-      </div>
+        */}
+        </div>
     </div>
   );
 }
