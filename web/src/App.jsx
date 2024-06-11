@@ -5,16 +5,16 @@ import AccountManager from './experts/AccountManager';
 import Meeting from './components/Meeting';
 import { WiredCard, WiredButton, WiredInput } from 'react-wired-elements';
 import { brandSchema, brochureSchema } from './schemas';
-import { zodToJson } from './utils/utils';
 import { tools } from './experts/constants';
 
 function App() {
-    const expert = useRef(null);
-    const expert2 = useRef(null);
-    const expert3 = useRef(null);
+    //const expert = useRef(null);
+    //const expert2 = useRef(null);
+    //const expert3 = useRef(null);
+    const meetingBrand = useRef(null);
 
-    const test = zodToJson(brandSchema);
-    console.log('test zod to json',test);
+    //const test = zodToJson(brandSchema);
+    //console.log('test zod to json',test);
 
   return (
     <div className="App">
@@ -56,15 +56,16 @@ function App() {
         <Expert ref={expert2} label="Designer" bgColor="#000" hairColor="#964B00" style={{ marginLeft: '20px' }}/>
         <AccountManager ref={expert3} name="Mauricio" />
         */}
-        <Meeting>
+        <Meeting name="brandBuilder" ref={meetingBrand} task="research the products, services and build the design brand guidelines" outputKey="brand">
           <AccountManager name="Mauricio1" />
           <AccountManager name="Mauricio2" />
         </Meeting>
       </div>
       <div>
+      <button onClick={async()=>{
+        meetingBrand.current.start('',brandSchema);
+      }}>Test</button>
         {/** 
-         * 
-
         <button onClick={async()=>{
             const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
             await expert3.current.play(tools.search); //await anim loading
