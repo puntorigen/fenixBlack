@@ -54,11 +54,11 @@ function App() {
       <div>
         <button onClick={async()=>{
             const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-            await expert.current.play('searching',{ bgcolor:'#FFFFFF' },true);
+            await expert.current.play('searching',{ bgcolor:'#6BD9E9' },true);
             expert.current.speak("Searching websites for more information.",400,150,2000);
             expert.current.avatarSize('20%','#29465B');
             expert2.current.lookLeft();
-            await sleep(5500);
+            await sleep(6000); 
             expert.current.avatarSize('100%');
             await expert.current.play('analyzing',{ tint:'#FFFFFF' },true);
             expert.current.speak("Reading the contents ..",340,700);

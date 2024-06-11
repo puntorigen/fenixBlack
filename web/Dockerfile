@@ -17,15 +17,19 @@ COPY . .
 # Build the project (this creates the build directory)
 RUN npm run build
 
-# Step 2: Serve the app with Nginx
+EXPOSE 3000
+
+CMD ["npm", "start"]
+
+# Step 2: Serve the app with Nginx (production)
 # Use an official Nginx image as the base image for the serving stage
-FROM nginx:alpine
+#FROM nginx:alpine
 
 # Copy the built assets from the builder stage
-COPY --from=builder /web/build /usr/share/nginx/html
+#COPY --from=builder /web/build /usr/share/nginx/html
 
 # Expose port 80 to the outside once the container has launched
-EXPOSE 80
+#EXPOSE 80
 
 # Start Nginx server
-CMD ["nginx", "-g", "daemon off;"]
+#CMD ["nginx", "-g", "daemon off;"]

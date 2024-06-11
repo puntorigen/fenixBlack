@@ -10,8 +10,7 @@ const Agent = forwardRef(({
 }, ref) => {
     const puppetRef = useRef();
 
-    // Map Agent props to Puppet props or methods
-    const handleSetup = () => {
+    const setup = () => {
         // Example: set up Puppet based on Agent's props like age and gender
         if (puppetRef.current) {
             puppetRef.current.setAge(age);
@@ -21,17 +20,25 @@ const Agent = forwardRef(({
 
     // Expose Puppet's methods to Agent's parent through ref
     useImperativeHandle(ref, () => ({
+        // Inherit Puppet methods
+        ...puppetRef.current,
+        // Custom methods
+        meta: () => {
+            return {
+                name,
+                age,
+            }
+        },
         play: () => {
             if (puppetRef.current) {
                 puppetRef.current.play('smile'); // example method
             }
-        },
-        customMethod: () => {
-            handleSetup();
-        },
-        // Directly forwarding methods
-        ...puppetRef.current
+        }
     }));
+
+    useEffect(() => {
+        setup(); // Set up Puppet when Agent is mounted
+    }, []);
 
     return (
         <Puppet
