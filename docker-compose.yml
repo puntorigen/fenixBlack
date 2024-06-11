@@ -1,0 +1,20 @@
+services:
+  web:
+    container_name: fenix_frontend 
+    build: 
+      context: ./web
+    ports:
+      - "3000:80"
+    volumes:
+      - ./web:/web
+
+  backend:
+    container_name: fenix_backend 
+    build: 
+      context: ./backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    #volumes:
+    #  - ./backend:/app

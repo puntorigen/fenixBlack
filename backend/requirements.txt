@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+embedchain
+sqlmodel
+python-dotenv
+openai
+instructor
+pydantic

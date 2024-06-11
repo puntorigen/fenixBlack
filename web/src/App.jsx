@@ -30,8 +30,8 @@ function App() {
 
       <Factory industry="marketing" ref={factory}>
         <WhiteBoard type={"thought"} for="single|all" ref={thinkingBoard}/> // shows a mindmap of the thought or output process
-        <WhiteBoard type={"output"} for="single|all" ref={outputBoard}/> // shows a mindmap of the overall work output
         <Meeting name="brandBuilder" ref={meetingBrand} task="research the products, services and build the design brand guidelines" outputKey="brand">
+            <WhiteBoard type={"output"} /> //shows a mindmap of the overall work output
             <AccountManager age={37} gender={"male"} name={"Mauricio"} />
             <Designer gender={"female"} name={"Marta"} />
         </Meeting>
