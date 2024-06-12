@@ -92,7 +92,7 @@ const Meeting = forwardRef(({ name, task, outputKey, children }, refMain) => {
                 }
                 // Handle the data received from the backend
                 // Optionally close the websocket if the task is complete
-                if (data.endMeeting) {
+                if (data.action === 'finishedMeeting') {
                     // 4. wait for end of meeting, convert output JSON to zod schema and return, and assign raw output to outputKey ref variable
                     if (websocketRef.current) {
                         websocketRef.current.close();

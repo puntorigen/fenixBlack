@@ -114,7 +114,7 @@ class Meeting:
         print("Improved task", improved)
         # TODO: convert task JSON schema into Pydantic model
         pydantic_schema = json2pydantic(task.schema)
-        print("Pydantic schema", pydantic_schema.model_json_schema(indent=2))
+        print("Pydantic schema", pydantic_schema)
         # create a task object
         task = Task(
             description=improved.description,
