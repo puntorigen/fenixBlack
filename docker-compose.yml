@@ -21,5 +21,13 @@ services:
       - ./backend/.env
     environment:
       - CHOKIDAR_USEPOLLING=true  # Ensures file watching works on all OS and Docker setups
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./backend
+          target: ./app
+          ignore:
+            - .pyc
+
     #volumes:
     #  - ./backend:/app

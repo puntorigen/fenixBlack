@@ -7,10 +7,10 @@ from utils.utils import json2pydantic
 import json, os
 
 import instructor
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 # TODO: add support for ollama here
-client_instructor = instructor.from_openai(OpenAI(api_key=os.getenv("OPENAI_API_KEY")))
+client_instructor = instructor.from_openai(AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY")))
 
 class AvatarDetails(BaseModel):
     bgColor: Optional[str] = Field(None, description="Background color of the avatar")
@@ -54,9 +54,8 @@ class ImprovedTask(BaseModel):
     expected_output: str = Field(..., description="A description of the expected output for the task")
 
 class Meeting:
-    def __init__(self, ws_manager, ws_meetingid, name, context, task, schema):
-        self.ws_manager = ws_manager
-        self.ws_meetingid = ws_meetingid
+    def __init__(self, send_data, name, context, task, schema):
+        self.send_data = send_data
         self.name = name
         self.context = context
         self.task = task
@@ -68,8 +67,8 @@ class Meeting:
             "action": "reportAgentSteps",
             "data": step_output,
         }
-        await self.ws_manager.send_message(json.dumps(payload), self.ws_meetingid)
-        print('DEBUG: testStep called',step_output)
+        print('DEBUG: reportAgentSteps called',step_output)
+        await self.send_data(payload)
 
     def create_expert(self, expert: ExpertModel):
         # create list of tools for this expert
@@ -99,9 +98,9 @@ class Meeting:
             "action": "createTask",
             "data": "Improving task definition",
         }
-        await self.ws_manager.send_message(json.dumps(payload), self.ws_meetingid)
+        await self.send_data(payload)
         # TODO: create instructor call here
-        improved = client_instructor.chat.completions.create(
+        improved = await client_instructor.chat.completions.create(
             model="gpt-4",
             response_model=ImprovedTask,
             messages=[
