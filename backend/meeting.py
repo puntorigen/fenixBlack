@@ -3,7 +3,14 @@ from utils.LLMs import get_llm, get_max_num_iterations
 from pydantic import BaseModel, Field
 from typing import Dict, Optional
 from textwrap import dedent
-import json
+from utils.utils import json2pydantic
+import json, os
+
+import instructor
+from openai import OpenAI
+
+# TODO: add support for ollama here
+client_instructor = instructor.from_openai(OpenAI(api_key=os.getenv("OPENAI_API_KEY")))
 
 class AvatarDetails(BaseModel):
     bgColor: Optional[str] = Field(None, description="Background color of the avatar")
@@ -36,7 +43,17 @@ class ExpertModel(BaseModel):
     tools: Tools = Field(..., description="Tools associated with the expert and their specific functions")
     avatar_id: str = Field(..., description="Identifier for the field associated with the avatar")
 
-class meeting:
+class TaskContext(BaseModel):
+    context: str = Field(..., description="The context of the task")
+    schema: Optional[Dict] = Field(default=None, description="Optional and unrestricted schema dictionary")
+    name: str = Field(..., description="The name of the task")
+    task: str = Field(..., description="Description of the task")
+
+class ImprovedTask(BaseModel):
+    description: str = Field(..., description="The initial description of the task to perform")
+    expected_output: str = Field(..., description="A description of the expected output for the task")
+
+class Meeting:
     def __init__(self, ws_manager, ws_meetingid, name, context, task, schema):
         self.ws_manager = ws_manager
         self.ws_meetingid = ws_meetingid
@@ -45,13 +62,13 @@ class meeting:
         self.task = task
         self.schema = schema
 
-    def reportAgentSteps(self, step_output):
+    async def reportAgentSteps(self, step_output):
         # send the step output to the frontend
         payload = {
             "action": "reportAgentSteps",
             "data": step_output,
         }
-        self.ws_manager.send_message(json.dumps(payload), self.ws_meetingid)
+        await self.ws_manager.send_message(json.dumps(payload), self.ws_meetingid)
         print('DEBUG: testStep called',step_output)
 
     def create_expert(self, expert: ExpertModel):
@@ -75,18 +92,38 @@ class meeting:
         )
         return temp
 
-    def create_task(self, task):
+    async def create_task(self, task: TaskContext):
         # build a better description for the task using the task context, name and task
         # let frontend kwnow that the task is being created/thinked
         payload = {
             "action": "createTask",
-            "data": "Creating task...",
+            "data": "Improving task definition",
         }
-        self.ws_manager.send_message(json.dumps(payload), self.ws_meetingid)
+        await self.ws_manager.send_message(json.dumps(payload), self.ws_meetingid)
         # TODO: create instructor call here
+        improved = client_instructor.chat.completions.create(
+            model="gpt-4",
+            response_model=ImprovedTask,
+            messages=[
+                {"role": "system", "content": "# act as an expert prompt engineer. Consider the following JSON object as the context for writing a compelling task 'description' that a small LLM can understand, and a clear 'expected_output' field that describes the expected data output from the given schema in a couple of paragraphs."},
+                {"role": "user", "content": f"# Analyze the json:\n{json.dumps(task.schema)}"},
+            ],
+            temperature=0.03,
+            stream=False,
+        )
+        print("Improved task", improved)
         # TODO: convert task JSON schema into Pydantic model
+        pydantic_schema = json2pydantic(task.schema)
+        print("Pydantic schema", pydantic_schema.model_json_schema(indent=2))
         # create a task object
-        pass 
+        task = Task(
+            description=improved.description,
+            output_pydantic=pydantic_schema,
+            expected_output=improved.expected_output,
+            async_execution=False,
+            agent=None
+        )
+        return task
 
     def get_tool(self, tool_id):
         # get the tool object given the tool_id

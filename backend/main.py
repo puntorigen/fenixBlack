@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from db.database import Database
 from utils.ConnectionManager import ConnectionManager
 
-from meeting import meeting as new_meeting, ExpertModel
+from meeting import Meeting, ExpertModel, TaskContext
 from crewai import Agent, Task, Crew, Process
 from textwrap import dedent
 from utils.LLMs import get_llm, get_max_num_iterations
@@ -77,7 +77,7 @@ async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
         while True:
             data = await websocket.receive_text()
             from_frontend = json.loads(data)
-            meeting = new_meeting(
+            current_meeting = Meeting(
                 ws_manager=manager,
                 ws_meetingid=meeting_id,
                 name=from_frontend["meta"]["name"], 
@@ -92,15 +92,17 @@ async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
             for expert in from_frontend["experts"]:
                 expert_object = from_frontend["experts"][expert]
                 expert_json = ExpertModel(**expert_object)
-                expert_ = new_meeting.create_expert(expert_json)
+                expert_ = current_meeting.create_expert(expert=expert_json)
                 experts.append(expert_)
+            print("DEBUG: experts",experts) 
             # build task and crew
-            print("DEBUG: experts",experts)
+            task = await current_meeting.create_task(TaskContext(**from_frontend["meta"]))
+            print("DEBUG: task",task)
             # reply END to the frontend
             to_frontend = {
                 "action": "finishedMeeting",
                 "data": "hello from server",
-                "context": meeting.context
+                "context": current_meeting.context
             }
             await manager.send_message(json.dumps(to_frontend), meeting_id)
 
