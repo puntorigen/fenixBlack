@@ -55,6 +55,22 @@ const Meeting = forwardRef(({ name, task, tools=[], outputKey, children }, refMa
             // 2. connect to backend via websocket and send data
             // 3. wait for responses and update the children with the new data
             // 4. wait for end of meeting, convert output JSON to zod schema and return, and assign raw output to outputKey ref variable
+        },
+        play: async()=>{
+            // animate the meeting -> to test the experts
+            const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+            Object.keys(refs.current).forEach(async(refName) => {
+                if (refs.current[refName] && refs.current[refName].speak) {
+                    await refs.current[refName].play('search');
+                    await refs.current[refName].speak(`Hello, I am the ${refs.current[refName].meta().role}, and I'm here to help you with your task.`);
+                    await sleep(4000);
+                    await refs.current[refName].play('scrape');
+                    await sleep(5000);
+                    await refs.current[refName].avatarSize('100%');
+                    await refs.current[refName].stop();
+                    await sleep(5000);
+                }
+            }); 
         }
     }));
 

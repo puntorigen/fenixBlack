@@ -1,21 +1,14 @@
 import React, { useRef } from 'react';
 import './App.css';
-import Expert from './experts/Expert'
-import AccountManager from './experts/AccountManager';
 import Meeting from './components/Meeting';
+import AccountManager from './experts/AccountManager';
+import Designer from './experts/Designer';
 import { WiredCard, WiredButton, WiredInput } from 'react-wired-elements';
 import { brandSchema, brochureSchema } from './schemas';
 import { tools } from './experts/constants';
 
 function App() {
-    //const expert = useRef(null);
-    //const expert2 = useRef(null);
-    //const expert3 = useRef(null);
-    const meetingBrand = useRef(null);
-
-    //const test = zodToJson(brandSchema);
-    //console.log('test zod to json',test);
-
+  const meetingBrand = useRef(null);
   return (
     <div className="App">
       <header className="App-header">
@@ -58,12 +51,13 @@ function App() {
         */}
         <Meeting name="brandBuilder" ref={meetingBrand} task="research the products, services and build the design brand guidelines" outputKey="brand">
           <AccountManager name="Mauricio1" />
-          <AccountManager name="Mauricio2" />
+          <Designer />
         </Meeting>
       </div>
       <div>
       <button onClick={async()=>{
-        meetingBrand.current.start('',brandSchema);
+        meetingBrand.current.start('Create the brand for www.propertyradar.com',brandSchema);
+        meetingBrand.current.play();
       }}>Test</button>
         {/** 
         <button onClick={async()=>{

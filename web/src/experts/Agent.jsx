@@ -1,16 +1,11 @@
 import React, { forwardRef, useRef, useEffect, useImperativeHandle } from 'react';
-import Puppet from './Puppet';
+import Puppet from '../components/Puppet';
 
 const Agent = forwardRef(({
-    bgColor="#6BD9E9", 
-    hairColor="#000", 
-    shirtColor="#FF0000", 
-    skinColor="#F9C9B6",
     width = "300px",  // default width
     height = "300px",  // default height
     style = {},
     meta = {},
-    tools = {},
     onSpeakEnd,
 }, ref) => {
     const puppetRef = useRef();
@@ -29,11 +24,11 @@ const Agent = forwardRef(({
         ...puppetRef.current,
         // Custom methods
         meta: () => meta,
-        play: async(tool='search',bgcolor='#6BD9E9',textDelay=2000) => {
+        play: async(tool='search',bgcolor=meta.avatar.bgColor || '#6BD9E9',textDelay=2000) => {
             if (puppetRef.current) {
-                if (tool in tools) {
-                    let animKey = Object.keys(tools[tool])[0]; // searching
-                    let text = tools[tool][animKey];
+                if (tool in meta.tools) {
+                    let animKey = Object.keys(meta.tools[tool])[0]; // searching
+                    let text = meta.tools[tool][animKey];
                     let extra = {};
                     if (animKey.indexOf(':') !== -1) {
                         extra = { tint: animKey.split(':')[1] };
@@ -61,10 +56,21 @@ const Agent = forwardRef(({
         <Puppet
             ref={puppetRef}
             label={meta?.role}
-            bgColor={bgColor}
-            hairColor={hairColor}
-            shirtColor={shirtColor}
-            skinColor={skinColor}
+            bgColor={meta.avatar.bgColor}
+            hairColor={meta.avatar.hairColor}
+            shirtColor={meta.avatar.shirtColor}
+            skinColor={meta.avatar.skinColor}
+            
+            earSize={meta.avatar.earSize} 
+            hairStyle={meta.avatar.hairStyle}
+            noseStyle={meta.avatar.noseStyle}
+            shirtStyle={meta.avatar.shirtStyle}
+            facialHairStyle={meta.avatar.facialHairStyle}
+            glassesStyle={meta.avatar.glassesStyle}
+            speakSpeed={meta.avatar.speakSpeed}
+            blinkSpeed={meta.avatar.blinkSpeed}
+            eyebrowsStyle={meta.avatar.eyebrowsStyle}
+
             initialText={''}
             width={width}
             height={height}

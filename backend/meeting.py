@@ -1,3 +1,6 @@
+import utils.LLMs as LLMs
+from crewai import Agent
+
 class meeting:
     def __init__(self):
         pass

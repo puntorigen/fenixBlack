@@ -1,10 +1,10 @@
 import React, { forwardRef, useRef, useEffect, useImperativeHandle } from 'react';
 import Agent from './Agent'; // TODO rename Agent to Expert later
-import { tools } from './constants';
+import { tools, avatar } from './constants';
 
-const AccountManager = forwardRef(({
-    name="Mauricio",
-    age=37,
+const Designer = forwardRef(({
+    name="Christian",
+    age=44,
     gender="male",
     style,
     onAnimationEnd,
@@ -15,19 +15,28 @@ const AccountManager = forwardRef(({
         type: 'expert',
         name,
         age,
-        role: 'Account Manager',
-        goal: `Manage client accounts and ensure customer satisfaction.`,
-        backstory: `Experienced in leading customer success teams within tech industries, adept at solving complex client issues.`,
+        role: 'Designer',
+        goal: `Create visually appealing and user-friendly designs.`,
+        backstory: `With a decade of experience in graphic and digital design, specializing in UX/UI and brand identity.`,
         collaborate: true,
         avatar: {
-            bgColor: '#6BD9E9',
-            hairColor: '#000000',
-            shirtColor: '#1F286A',
-            skinColor: '#c68642',
+            bgColor: '#E75A01', 
+            hairColor: '#fbe7a1',
+            shirtColor: '#C8F526',  
+            skinColor: avatar.skinColor.pale,
+            earSize: avatar.earSize.medium, 
+            hairStyle: avatar.hairStyle.dannyPhantom,
+            noseStyle: avatar.noseStyle.pointed,
+            shirtStyle: avatar.shirtStyle.open,
+            facialHairStyle: avatar.facialHairStyle.none,
+            glassesStyle: avatar.glassesStyle.none,
+            eyebrowsStyle: avatar.eyebrowsStyle.eyelashesUp,
+            speakSpeed: 200,
+            blinkSpeed: 3000,
         },
         tools: { // defines animations and which tools are available for this agent
             [tools.search]: { 'searching':'Searching websites for more information.' },
-            [tools.scrape]: { 'analyzing:#FFFFFF': 'Reading the contents ..' },
+            [tools.scrape]: { 'analyzing:#FFFFFF': 'Understanding the design ..' },
         }
     };
 
@@ -55,11 +64,7 @@ const AccountManager = forwardRef(({
         <Agent
             ref={expertRef}
             meta={meta}
-            name={name}
-            bgColor={meta.avatar.bgColor}
-            hairColor={meta.avatar.hairColor}
-            shirtColor={meta.avatar.shirtColor}
-            skinColor={meta.avatar.skinColor}
+            name={name}            
             style={style}
             onSpeakEnd={onAnimationEnd}
             // other props that Agent expects
@@ -67,4 +72,4 @@ const AccountManager = forwardRef(({
     );
 });
 
-export default AccountManager;
+export default Designer;

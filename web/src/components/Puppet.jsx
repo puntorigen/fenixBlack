@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle, Suspense } from 'react';
 import NiceAvatar from '@nice-avatar-svg/react';
 import lottie from 'lottie-web';
 import { replaceColor, flatten } from 'lottie-colorify';
@@ -8,6 +8,15 @@ const Puppet = forwardRef(({
     hairColor="#000", 
     shirtColor="#FF0000", 
     skinColor="#F9C9B6", 
+    earSize="small",
+    hairStyle="fonze",
+    noseStyle="curve",
+    shirtStyle="collared",
+    facialHairStyle="beard",
+    glassesStyle="round",
+    eyebrowsStyle="up",
+    speakSpeed="400",
+    blinkSpeed="1800",
     initialText="", 
     width = "300px",  // default width
     height = "300px",  // default height
@@ -38,7 +47,7 @@ const Puppet = forwardRef(({
     useEffect(() => {
         const blinkInterval = setInterval(() => {
             setEyesStyle(prev => (prev === 'circle' ? 'smiling' : 'circle'));
-        }, Math.random() * 1800 + 400);
+        }, Math.random() * blinkSpeed + 400);
     
         return () => clearInterval(blinkInterval);
     }, []);
@@ -50,7 +59,7 @@ const Puppet = forwardRef(({
         }
     };
 
-    const speak = (inputText, speed = 400, pause = 150, delayErase = 300) => {
+    const speak = (inputText, speed = speakSpeed, pause = 150, delayErase = 300) => {
         clearSpeakInterval(); // Clear any existing interval to prevent overlap
         const words = inputText.split(" ");
         let index = 0;
@@ -159,23 +168,23 @@ const Puppet = forwardRef(({
             { label && (<div className="nameTag">{label}</div>) }
             <div ref={animationContainer} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, backgroundColor: currentBgColor }} />
             <div style={{ transform: transformStyle, transformOrigin: transformOrigin, position: 'relative', zIndex: 0, ...transitionStyle }}>
-                <NiceAvatar
+                <Suspense fallback={"Loading ..."}><NiceAvatar
                     shape="square"
                     bgColor={avatarBgColor}
                     shirtColor={shirtColor}
                     skinColor={skinColor}
-                    earSize="small"
-                    hairStyle="fonze"
+                    earSize={earSize}
+                    hairStyle={hairStyle}
                     hairColor={hairColor}
-                    noseStyle="curve"
-                    glassesStyle="round"
+                    noseStyle={noseStyle}
+                    glassesStyle={glassesStyle}
                     eyesStyle={eyesStyle}
-                    facialHairStyle="beard"
+                    facialHairStyle={facialHairStyle}
                     mouthStyle={mouthStyle}
-                    shirtStyle="collared"
+                    shirtStyle={shirtStyle}
                     earRing="none"
-                    eyebrowsStyle="up"
-                />
+                    eyebrowsStyle={eyebrowsStyle}
+                /></Suspense>
             </div>
             {text && (
                 <div style={{
