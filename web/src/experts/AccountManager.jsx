@@ -3,6 +3,7 @@ import Agent from './Agent'; // TODO rename Agent to Expert later
 import { tools } from './constants';
 
 const AccountManager = forwardRef(({
+    id="account-manager",
     name="Mauricio",
     age=37,
     gender="male",
@@ -44,7 +45,7 @@ const AccountManager = forwardRef(({
         // Inherit Agent methods
         ...expertRef.current,
         // Custom methods
-        other: ()=>{}
+        getIDx: ()=>id
     }));
 
     useEffect(() => {
@@ -54,6 +55,7 @@ const AccountManager = forwardRef(({
     return (
         <Agent
             ref={expertRef}
+            id={id}
             meta={meta}
             name={name}
             bgColor={meta.avatar.bgColor}

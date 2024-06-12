@@ -56,8 +56,8 @@ function App() {
       </div>
       <div>
       <button onClick={async()=>{
-        meetingBrand.current.start('Create the brand for www.propertyradar.com',brandSchema);
-        meetingBrand.current.play();
+        await meetingBrand.current.start('Create the brand for www.propertyradar.com',brandSchema);
+        //meetingBrand.current.play();
       }}>Test</button>
         {/** 
         <button onClick={async()=>{

@@ -2,6 +2,7 @@ import React, { forwardRef, useRef, useEffect, useImperativeHandle } from 'react
 import Puppet from '../components/Puppet';
 
 const Agent = forwardRef(({
+    id = "agent",
     width = "300px",  // default width
     height = "300px",  // default height
     style = {},
@@ -23,6 +24,7 @@ const Agent = forwardRef(({
         // Inherit Puppet methods
         ...puppetRef.current,
         // Custom methods
+        getID: ()=>id,
         meta: () => meta,
         play: async(tool='search',bgcolor=meta.avatar.bgColor || '#6BD9E9',textDelay=2000) => {
             if (puppetRef.current) {

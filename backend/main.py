@@ -7,6 +7,11 @@ from pydantic import BaseModel, Field
 #from chain import chain
 from db.database import Database
 from utils.ConnectionManager import ConnectionManager
+
+from meeting import meeting as new_meeting, ExpertModel
+from crewai import Agent, Task, Crew, Process
+from textwrap import dedent
+from utils.LLMs import get_llm, get_max_num_iterations
 #from db.models import Comment, Scanned
 
 from urllib.parse import urlparse
@@ -71,16 +76,40 @@ async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
     try:
         while True:
             data = await websocket.receive_text()
-            await manager.send_message(f"Broadcast in {meeting_id}: {data}", meeting_id)
+            from_frontend = json.loads(data)
+            meeting = new_meeting(
+                ws_manager=manager,
+                ws_meetingid=meeting_id,
+                name=from_frontend["meta"]["name"], 
+                context=from_frontend["meta"]["context"], 
+                task=from_frontend["meta"]["task"], 
+                schema=from_frontend["meta"]["schema"]
+            )
+            print("data received",from_frontend)
+            # build experts
+            # for every expert on from_frontend["experts"] (Dict), create an expert, append to experts list
+            experts = []
+            for expert in from_frontend["experts"]:
+                expert_object = from_frontend["experts"][expert]
+                expert_json = ExpertModel(**expert_object)
+                expert_ = new_meeting.create_expert(expert_json)
+                experts.append(expert_)
+            # build task and crew
+            print("DEBUG: experts",experts)
+            # reply END to the frontend
+            to_frontend = {
+                "action": "finishedMeeting",
+                "data": "hello from server",
+                "context": meeting.context
+            }
+            await manager.send_message(json.dumps(to_frontend), meeting_id)
+
     except WebSocketDisconnect:
         manager.disconnect(websocket, meeting_id)
 
 @app.get("/test")
 async def test():
     #test endpoint
-    from crewai import Agent, Task, Crew, Process
-    from textwrap import dedent
-    from utils.LLMs import get_llm, get_max_num_iterations
     print("DEBUG: hello called")
     # hardcode agents for testing traceability
     # create an agent

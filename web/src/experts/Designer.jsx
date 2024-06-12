@@ -3,6 +3,7 @@ import Agent from './Agent'; // TODO rename Agent to Expert later
 import { tools, avatar } from './constants';
 
 const Designer = forwardRef(({
+    id="designer",
     name="Christian",
     age=44,
     gender="male",
@@ -63,6 +64,7 @@ const Designer = forwardRef(({
     return (
         <Agent
             ref={expertRef}
+            id={id}
             meta={meta}
             name={name}            
             style={style}
