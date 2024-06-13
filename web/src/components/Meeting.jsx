@@ -84,15 +84,40 @@ const Meeting = forwardRef(({ name, task, outputKey, children }, refMain) => {
             // 2. connect to backend via websocket and send data
             const handleMessage = (event) => {
                 // 3. wait for responses and update the children with the new data
-                const data = JSON.parse(event.data);
-                console.log('Received data:', data);
-                // dummy, update an avatar with the data (just testing)
-                if (refs.current['field-1']) {
-                    refs.current['field-1'].speak(data.data);
-                }
+                let obj = event.data;
+                try {
+                    obj = JSON.parse(event.data);
+                } catch(e) {}
+                console.log('Received data:', obj);
                 // Handle the data received from the backend
                 // Optionally close the websocket if the task is complete
-                if (data.action === 'finishedMeeting') {
+                // if obj is string
+                if (typeof obj === 'string' &&  obj === 'KEEPALIVE') { //ignore keepalive events
+                } else if (obj?.action === 'server_status') {
+                } else if (obj?.action === 'createTask') {
+                    // dummy, update an avatar with the data (just testing)
+                    if (refs.current['field-1']) {
+                        refs.current['field-1'].speak(obj.data);
+                    }
+                } else if (obj?.action === 'improvedTask') {
+                    // dummy, update an avatar with the data (just testing) 
+                    if (refs.current['field-0']) {
+                        refs.current['field-0'].speak(obj.data.description);
+                    }
+                } else if (obj?.action === 'finishedMeeting') {
+                    // dummy, update an avatar with the data (just testing)
+                    if (refs.current['field-0']) {
+                        refs.current['field-0'].speak("The meeting was completed, check the console output for the data.");
+                        let zod_schema = {};  
+                        try {
+                            let raw_obj = JSON.parse(obj.data.raw);
+                            console.log('Raw OBJ output:', raw_obj);
+                            zod_schema = schema.parse(raw_obj);
+                            console.log('Schema enforced result:', zod_schema);
+                        } catch(e) {
+                            console.error('Schema enforcement failed:', e);
+                        }
+                    }
                     // 4. wait for end of meeting, convert output JSON to zod schema and return, and assign raw output to outputKey ref variable
                     if (websocketRef.current) {
                         websocketRef.current.close();
