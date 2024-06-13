@@ -88,7 +88,6 @@ const Meeting = forwardRef(({ name, task, outputKey, children }, refMain) => {
                 try {
                     obj = JSON.parse(event.data);
                 } catch(e) {}
-                console.log('Received data:', obj);
                 // Handle the data received from the backend
                 // Optionally close the websocket if the task is complete
                 // if obj is string
@@ -110,12 +109,11 @@ const Meeting = forwardRef(({ name, task, outputKey, children }, refMain) => {
                         refs.current['field-0'].speak("The meeting was completed, check the console output for the data.");
                         let zod_schema = {};  
                         try {
-                            let raw_obj = JSON.parse(obj.data.raw);
-                            console.log('Raw OBJ output:', raw_obj);
-                            zod_schema = schema.parse(raw_obj);
+                            zod_schema = schema.parse(obj.data);
                             console.log('Schema enforced result:', zod_schema);
                         } catch(e) {
                             console.error('Schema enforcement failed:', e);
+                            console.log('Received data:', obj);
                         }
                     }
                     // 4. wait for end of meeting, convert output JSON to zod schema and return, and assign raw output to outputKey ref variable
@@ -123,6 +121,8 @@ const Meeting = forwardRef(({ name, task, outputKey, children }, refMain) => {
                         websocketRef.current.close();
                         console.log('Meeting ended and socket closed.');
                     }
+                } else {
+                    console.log('(unhandled) Received data:', obj);
                 }
             };
             const websocket = await connectWebSocket(name, handleMessage, onConnect);

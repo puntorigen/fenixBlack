@@ -75,16 +75,8 @@ async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
             print("DEBUG: experts",experts) 
             # build task and crew
             #result = await current_meeting.launch_task(experts,TaskContext(**from_frontend["meta"]))
-            result = await current_meeting.launch_task(experts,TaskContext(**from_frontend["meta"]))
-            print("DEBUG: result",result)
-            # reply END to the frontend
-            #to_frontend = { 
-            #    "action": "finishedMeeting",
-            #    "data": result,
-            #    "context": current_meeting.context
-            #}
-            #await send_data(to_frontend)
-            #await manager.send_message(json.dumps(to_frontend), meeting_id)
+            await current_meeting.launch_task(experts,TaskContext(**from_frontend["meta"]))
+            # end meeting
 
     except WebSocketDisconnect:
         manager.disconnect(websocket, meeting_id)

@@ -9,7 +9,9 @@ RUN apt-get update && \
 RUN pip install --no-cache-dir fastapi uvicorn sqlmodel python-dotenv openai instructor pydantic
 # Install custom puntorigen crewai with latest instructor 1.3.2 (supporting ollama output_pydantic)
 #RUN pip install --no-cache-dir https://github.com/puntorigen/crewai/archive/main.zip
-RUN pip install --no-cache-dir crewai "crewai[tools]" 
+#RUN pip install --no-cache-dir crewai "crewai[tools]" 
+RUN pip install --no-cache-dir https://github.com/joaomdmoura/crewAI/archive/main.zip
+RUN pip install --no-cache-dir "crewai[tools]" 
 
 # Set the working directory
 WORKDIR /app

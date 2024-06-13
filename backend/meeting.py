@@ -67,6 +67,7 @@ class Meeting:
         self.context = context
         self.task = task
         self.schema = schema
+        self.tool_name_map = {} # map tool names to tool ids
 
     async def send_data(self, data):
         try:
@@ -87,11 +88,9 @@ class Meeting:
 
                     if isinstance(action, dict) and "tool" in action and "tool_input" in action and "log" in action:
                         action_ = {
-                            "tool": action["tool"],
-                            "tool_input": action["tool_input"],
-                            "log": action["log"],
-                            "action": action["Action"],
-                            "action_input": action["tool_input"]
+                            "tool": action.tool,
+                            "tool_input": action.tool_input,
+                            "log": action.log
                         }
                         step_object.append({ "type":"action_obj", "data":action_ })
 
@@ -99,13 +98,21 @@ class Meeting:
                         step_object.append({ "type":"action_str", "data":action })
                     else:
                         action_ = {}
+                        action_["error"] = False
                         if action.tool:
                             action_["tool"] = action.tool
+                            if action.tool == "_Exception":
+                                action_["tool_id"] = "error"
+                                action_["error"] = True
+                                action_["error_message"] = action.tool_input
+                            elif action.tool in self.tool_name_map:
+                                action_["tool_id"] = self.tool_name_map[action.tool]
+                                
                         if action.tool_input:
                             action_["tool_input"] = action.tool_input
                         if action.log:
                             action_["log"] = action.log
-                        step_object.append({ "type":"action_raw", "data":action_ }) #str(action)
+                        step_object.append({ "type":"tool", "data":action_ }) #str(action)
 
                     observation_ = {}
                     observation_["lines"] = []
@@ -126,8 +133,8 @@ class Meeting:
                     else:
                         observation_["line"] = str(observation)
 
-                    step_object.append({ "type":"observation", "data":observation_ })
-                    step_object.append({ "type":"observation_raw", "data":observation })
+                    step_object.append({ "type":"response", "data":observation_ })
+                    #step_object.append({ "type":"response_raw", "data":observation })
                 else:
                     step_object.append({ "type":"step", "data":str(step) })
 
@@ -177,9 +184,13 @@ class Meeting:
         # create list of tools for this expert
         tools = []
         for key in expert.tools:
-            tool = self.get_tool(key)
+            print("DEBUG EXPERT TOOLS: key",key[0])
+            tool = self.get_tool(key[0])
+            self.tool_name_map[tool.name] = key[0]
+            print("DEBUG EXPERT TOOLS: tool",str(tool))
             if tool is not None:
                 tools.append(tool)
+                
         # create report specific for Expert
         def reportAgentStepsSync(step_output):
             # Get the current running loop and create a new task
@@ -314,10 +325,10 @@ class Meeting:
             description=improved.description,
             output_pydantic=pydantic_schema,
             expected_output=improved.expected_output,
-            async_execution=True,
+            async_execution=False,
             agent=coordinator,
             #tools=tools,
-            callback=onTaskFinished
+            #callback=onTaskFinished
         )
         # build crew
         crew = Crew(
@@ -329,7 +340,15 @@ class Meeting:
         )
         # launch the crew
         print("Starting CREW processing ..")
-        result = crew.kickoff()
+        result = await crew.kickoff_async()
+        result_json = result.model_dump()
+        print("DEBUG: result",result_json)
+        # reply END to the frontend
+        to_frontend = { 
+            "action": "finishedMeeting",
+            "data": result_json
+        }
+        await self.send_data(to_frontend)
         return result
 
     def get_tool(self, tool_id):
