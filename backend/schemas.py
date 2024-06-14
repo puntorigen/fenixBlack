@@ -22,7 +22,7 @@ class Tools(BaseModel):
 
 class ExpertModel(BaseModel):
     type: Optional[str] = Field(None, description="Type of the object, e.g., 'expert'")
-    name: str = Field(..., description="Name of the expert")
+    name: Optional[str] = Field(..., description="Name of the expert")
     age: Optional[int] = Field(None, description="Age of the expert")
     role: str = Field(..., description="Role of the expert, e.g., 'Designer'")
     goal: str = Field(..., description="Goal or objective of the expert")
@@ -30,7 +30,7 @@ class ExpertModel(BaseModel):
     personality: Optional[str] = Field("", description="Personality of the expert, communication style, etc.")
     collaborate: bool = Field(..., description="Flag indicating whether the expert is open to collaboration")
     avatar: Optional[AvatarDetails] = Field(None, description="Detailed avatar settings of the expert")
-    tools: Tools = Field(..., description="Tools associated with the expert and their specific functions")
+    tools: Optional[Tools] = Field(None, description="Tools associated with the expert and their specific functions")
     avatar_id: str = Field(..., description="Identifier for the field associated with the avatar")
 
 class TaskContext(BaseModel):

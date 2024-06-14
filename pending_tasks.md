@@ -5,13 +5,13 @@ tasks:
 - add 'Agent' support for RAG
 - [x] add support for multiple lines of text on 'Agent' speak exposed method
 - [x] add support for 'Agent', speak onEnd callback, to chain several calls to a single Agent
-- add expert 'Agent' personality field for adapting responses as narrative
+- [in progress] add expert 'Agent' personality field for adapting responses as narrative
     - add API endpoint that accepts an Expert profile and a text, and returns
       the text as if said by the Expert with his personality applied, as if chatting on
       a meeting.
 - add running meeting timer on Meeting component (with prop showTime=true)
 - add more tools:
-    - switched 'scape' for 'rag' internally
+    - [x] switched 'scape' for 'rag' internally
 
 - add meeting summary support on finishMeeting
 - add meeting layout support

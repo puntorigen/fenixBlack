@@ -20,11 +20,10 @@ const AccountManager = forwardRef(({
         goal: `Manage client accounts and ensure customer satisfaction.`,
         backstory: `Experienced in leading customer success teams within tech industries, adept at solving complex client issues.`,
         // how the experts talks back to the user like in the meeting
-        personality: `Always use 'I' instead of 'You', use easy to understand terms, don't use exagerated words, and be straightfoward on the tasks you are going to perform.`, 
+        personality: `Always use 'I' instead of 'You', use easy to understand terms, don't use exagerated words, and be straightfoward on the tasks you are going to perform. Instead of saying you will perform in the future, say you are doing it now.`, 
         collaborate: true,
         avatar: {
             bgColor: '#6BD9E9',
-            // dark brown hair color
             hairColor: '#000', 
             shirtColor: '#FFFFFF', //#1F286A
             skinColor: avatar.skinColor.tan,
@@ -33,8 +32,8 @@ const AccountManager = forwardRef(({
         },
         tools: { // defines animations and which tools are available for this agent
             [tools.search]: { 'searching':'Searching websites for more information.' },
-            [tools.scrape]: { 'analyzing:#FFFFFF': 'Reading the contents ..' },
-        }
+            [tools.scrape]: { 'reading': 'Reading the contents ..' },
+        } 
     };
 
     const setup = () => {

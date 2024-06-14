@@ -76,7 +76,10 @@ async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
             # build task and crew 
             #result = await current_meeting.launch_task(experts,TaskContext(**from_frontend["meta"]))
             await current_meeting.launch_task(experts,TaskContext(**from_frontend["meta"]))
-            # end meeting
+            break
+        
+        # end meeting
+        manager.disconnect(websocket, meeting_id)
 
     except WebSocketDisconnect:
         manager.disconnect(websocket, meeting_id)

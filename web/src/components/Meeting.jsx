@@ -98,7 +98,7 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMa
                     // dummy, update an avatar with the data (just testing)
                     console.log('Received data:', obj);
                     if (refs.current['field-1']) {
-                        refs.current['field-1'].speak(obj.data);
+                        await refs.current['field-1'].speak(obj.data);
                     }
                 } else if (obj?.action === 'improvedTask') {
                     // dummy, update an avatar with the data (just testing) 
@@ -107,7 +107,7 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMa
                         // split the description into an array 
                         const sentences = splitSentences(obj.data.description);
                         //console.log('sentences',sentences);
-                        refs.current['field-0'].speak(sentences);
+                        await refs.current['field-0'].speak(sentences);
                     }
                 } else if (obj?.action === 'reportAgentSteps') {
                     // @TODO: move these conditions into the backend
@@ -157,8 +157,9 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMa
                     if (play.valid === true) {
                         if (refs.current[play.expert_id]) {
                             await refs.current[play.expert_id].play(play.tool_id);
-                            refs.current[play.expert_id].speak(play.sentences,400,150,300,()=>{
-                                refs.current[play.expert_id].avatarSize('100%');
+                            await refs.current[play.expert_id].speak(play.sentences,400,150,300,async()=>{
+                                await refs.current[play.expert_id].avatarSize('100%');
+                                await refs.current[play.expert_id].stop();
                             }); 
                         }
                     }
@@ -169,8 +170,8 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMa
                     // iterate refs
                     for (const expert_id in refs.current) {
                         if (refs.current[expert_id].stop) {
-                            refs.current[expert_id].avatarSize('100%');
-                            refs.current[expert_id].stop();
+                            await refs.current[expert_id].avatarSize('100%');
+                            await refs.current[expert_id].stop();
                         }
                     }
                     //

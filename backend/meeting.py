@@ -32,7 +32,7 @@ class Meeting:
         except Exception as e:
             print("DEBUG: send_data ERROR",e)
 
-    async def reportAgentSteps(self, step_output, expert_id: str = None, expert_role: str = None):
+    async def reportAgentSteps(self, step_output, expert: ExpertModel):
         # send the step output to the frontend
         try:
             # build step_object object
@@ -99,7 +99,7 @@ class Meeting:
             expert_action["valid"] = False
             expert_action["kind"] = ""
             expert_action["speak"] = []
-            expert_action["expert_id"] = expert_id
+            expert_action["expert_id"] = expert.avatar_id
             expert_action["tool_id"] = ""
             # build the real expert_action object
             for step in step_object:
@@ -109,12 +109,14 @@ class Meeting:
                     expert_action["tool_input"] = step["data"]["tool_input"]
                     expert_action["speak"].append(step["data"]["log"])
                     break
+            # TODO: if expert.personality is not empty and expert_action is not empty
+            # TODO: create & call adaptExpertSpeak function to adapt the expert_action spoken & shown text
             # build payload
             payload = {
                 "action": "reportAgentSteps",
                 "data": step_object,
-                "expert_id": expert_id,
-                "expert_role": expert_role,
+                "expert_id": expert.avatar_id,
+                "expert_role": expert.role,
                 "expert_action": expert_action
             }
             await self.send_data(payload)
@@ -169,7 +171,7 @@ class Meeting:
             try:
                 loop = asyncio.get_running_loop()
                 if loop.is_running():
-                    loop.create_task(self.reportAgentSteps(step_output,expert.avatar_id,expert.role))
+                    loop.create_task(self.reportAgentSteps(step_output,expert))
                 else:
                     print("reportAgentStepsSync->EVENT LOOP IS NOT RUNNING")
                     #loop.run_until_complete(self.reportAgentSteps(step_output))
@@ -177,7 +179,7 @@ class Meeting:
                 print("reportAgentStepsSync->EVENT LOOP ERROR",e)
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                loop.run_until_complete(self.reportAgentSteps(step_output,expert.avatar_id,expert.role))
+                loop.run_until_complete(self.reportAgentSteps(step_output,expert))
 
         # create an expert
         temp = Agent(
@@ -185,10 +187,10 @@ class Meeting:
             goal=expert.goal,
             backstory=expert.backstory,
             verbose=True,
-            
+            memory=False,
             allow_delegation=expert.collaborate,
-            max_iter=get_max_num_iterations(5),
-            llm=get_llm(),
+            max_iter=get_max_num_iterations(7),
+            llm=get_llm(openai="gpt-4o", temperature=0),
             tools=tools,
             step_callback=reportAgentStepsSync
         )
@@ -198,17 +200,18 @@ class Meeting:
         # create report specific for Expert
         def reportAgentStepsSync(step_output):
             # Get the current running loop and create a new task
+            coordinator_expert = ExpertModel(role="coordinator",goal="coordinator",backstory="coordinator",personality="",avatar_id="coordinator")
             try:
                 loop = asyncio.get_running_loop()
                 if loop.is_running():
-                    loop.create_task(self.reportAgentSteps(step_output,"coordinator","coordinator"))
+                    loop.create_task(self.reportAgentSteps(step_output,coordinator_expert))
                 else:
                     print("reportAgentStepsSync->EVENT LOOP IS NOT RUNNING")
                     #loop.run_until_complete(self.reportAgentSteps(step_output))
             except Exception as e:
                 print("reportAgentStepsSync->EVENT LOOP ERROR",e)
                 loop = asyncio.new_event_loop()
-                loop.run_until_complete(self.reportAgentSteps(step_output,"coordinator","coordinator"))
+                loop.run_until_complete(self.reportAgentSteps(step_output,coordinator_expert))
 
         # creates an agent to start and coordinate the task assignment
         return Agent(
@@ -271,25 +274,13 @@ class Meeting:
         # TODO: convert task JSON schema into Pydantic model
         pydantic_schema = json2pydantic(task.schema)
         print("Pydantic schema", pydantic_schema)
-        # create a tool List with all of the tools used by the experts
-        tools = []
-        for expert in experts:
-            for key in expert.tools:
-                try: 
-                    tool = expert.tools[key]
-                    if tool is not None:
-                        tools.append(tool)
-                except Exception as e:
-                    print("ERROR: tool not found", e)
         # create a task object
         task = Task(
             description=improved.description,
             output_pydantic=pydantic_schema,
             expected_output=improved.expected_output,
             async_execution=False,
-            agent=coordinator,
-            #tools=tools,
-            #callback=onTaskFinished
+            agent=coordinator
         )
         # build crew
         crew = Crew(
@@ -298,12 +289,17 @@ class Meeting:
             verbose=True,
             process=Process.hierarchical,
             manager_llm=ChatOpenAI(model="gpt-4"),
-            memory=False
+            #memory=False
         )
         # launch the crew
         print("Starting CREW processing ..")
         result = await crew.kickoff_async()
-        result_json = result.model_dump()
+        result_json = result
+        try:
+            result_json = result.model_dump()
+        except Exception as e:
+            print("DEBUG: result_json ERROR",e)
+            result_json = str(result)
         print("DEBUG: result",result_json)
         # reply END to the frontend
         to_frontend = { 

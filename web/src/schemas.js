@@ -18,9 +18,9 @@ export const brandSchema = z.object({
     products: z.array(z.object({
          name: z.string().describe('The name of the product'),
          description: z.string().describe('The description of the product'),
-         price: z.number().describe('The price of the product in USD'),
+         features: z.array(z.string()).describe('The features of the product'),
          image: z.string().describe('The URL of the product image'),
-     })).describe('The products offered by the brand')
+     })).describe('The products offered by the brand') 
 });
 
 export const brochureSchema = z.object({
