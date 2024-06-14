@@ -35,10 +35,12 @@ const Agent = forwardRef(({
                     if (animKey.indexOf(':') !== -1) {
                         extra = { tint: animKey.split(':')[1] };
                         animKey = animKey.split(':')[0];
-                    }
+                    } 
                     await puppetRef.current.play(animKey,{ bgcolor, ...extra },true);
                     puppetRef.current.avatarSize('20%','#29465B');
-                    puppetRef.current.speak(text,400,150,textDelay);
+                    puppetRef.current.speak(text,400,150,textDelay,()=>{
+                        puppetRef.current.avatarSize('100%');
+                    });
                 }
             }
         },

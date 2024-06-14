@@ -3,12 +3,14 @@ import './App.css';
 import Meeting from './components/Meeting';
 import AccountManager from './experts/AccountManager';
 import Designer from './experts/Designer';
+import Lawyer from './experts/Lawyer';
 import { WiredCard, WiredButton, WiredInput } from 'react-wired-elements';
-import { brandSchema, brochureSchema } from './schemas';
+import { brandSchema, brochureSchema, privacyPolicy } from './schemas';
 import { tools } from './experts/constants';
 
 function App() {
   const meetingBrand = useRef(null);
+  const meetingPrivacy = useRef(null);
   return (
     <div className="App">
       <header className="App-header">
@@ -45,52 +47,40 @@ function App() {
       <div>
       </div>
       <div>
-        {/*<Expert ref={expert} label="Account Manager"/>
-        <Expert ref={expert2} label="Designer" bgColor="#000" hairColor="#964B00" style={{ marginLeft: '20px' }}/>
-        <AccountManager ref={expert3} name="Mauricio" />
-        */}
-        <Meeting name="brandBuilder" ref={meetingBrand} task="research the products, services and build the design brand guidelines" outputKey="brand">
+        {/*
+        
+        <Meeting 
+          name="privacyPolicy" 
+          ref={meetingPrivacy} 
+          task="scan and review the privacy policy and check if it's inline with GDPR" 
+          outputKey="brand"
+          onFinish={(output)=>{
+            console.log('meeting onFinish called',output);
+          }}>
           <AccountManager name="Mauricio1" />
+          <Designer />
+          <Lawyer />
+        </Meeting>
+        */}
+
+        <Meeting 
+          name="brandBuilder" 
+          ref={meetingBrand} 
+          task="research what does the company do, their colors, fonts, their products and prices, and build a design brand guideline report" 
+          outputKey="brand"
+          onFinish={(output)=>{
+            console.log('meeting onFinish called',output);
+          }}>
+          <AccountManager name="Mauricio" />
           <Designer />
         </Meeting>
       </div>
       <div>
       <button onClick={async()=>{
-        await meetingBrand.current.start('Create the brand for www.propertyradar.com',brandSchema);
+        //await privacyPolicy.current.start('Create a review for propertyradar.com',privacyPolicy);
+        await meetingBrand.current.start('Create brand guidelines for propertyradar.com',brandSchema);
         //meetingBrand.current.play();
-      }}>Test</button>
-        {/** 
-        <button onClick={async()=>{
-            const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-            await expert3.current.play(tools.search); //await anim loading
-            await sleep(2000); // in here because server needs to be able to overwrite executing action; server delay sim
-            expert3.current.avatarSize('100%');
-            expert3.current.stop();
-            await sleep(2000); // in here because server needs to be able to overwrite executing action; server delay sim
-            const expert3json = expert3.current.json();
-            console.log('expert3 JSON',expert3json);
-            await expert3.current.play(tools.scrape);
-            //
-            await expert.current.play('searching',{ bgcolor:'#6BD9E9' },true);
-            expert.current.speak("Searching websites for more information.",400,150,2000);
-            expert.current.avatarSize('20%','#29465B');
-            expert2.current.lookLeft();
-            await sleep(6000); 
-            expert.current.avatarSize('100%');
-            await expert.current.play('analyzing',{ tint:'#FFFFFF' },true);
-            expert.current.speak("Reading the contents ..",340,700);
-            await sleep(6000);
-            expert.current.speak("Writing a beautiful message ..",340,700);
-            await expert.current.play('writing',null,true);
-            expert.current.avatarSize('30%');
-            
-            //await expert2.current.play('reading',null,true);
-            expert2.current.speak("Hello, my name is Expert 2. I am a nice avatar expert. This is a much longer string of text so to test how it is displayed. Hello, my name is Expert 2. I am a nice avatar expert. This is a much longer string of text so to test how it is displayed.");
-            
-            await sleep(7000);
-            //expert.current.avatarSize('100%');
-        }}>Test</button>
-        */}
+      }}>Start Meeting</button>
         </div>
     </div>
   );

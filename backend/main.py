@@ -72,8 +72,8 @@ async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
                 expert_json = ExpertModel(**expert_object)
                 expert_ = current_meeting.create_expert(expert=expert_json)
                 experts.append(expert_)
-            print("DEBUG: experts",experts) 
-            # build task and crew
+            #print("DEBUG: experts",experts) 
+            # build task and crew 
             #result = await current_meeting.launch_task(experts,TaskContext(**from_frontend["meta"]))
             await current_meeting.launch_task(experts,TaskContext(**from_frontend["meta"]))
             # end meeting

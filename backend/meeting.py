@@ -1,14 +1,11 @@
 from crewai import Agent, Task, Crew, Process
 from crewai.tasks.task_output import TaskOutput
 from utils.LLMs import get_llm, get_max_num_iterations
-from pydantic import BaseModel, Field
-from typing import Dict, Optional
+from schemas import TaskContext, ExpertModel, ImprovedTask
+
 from textwrap import dedent
 from utils.utils import json2pydantic
 import json, os, asyncio
-
-import inspect
-import functools
 
 import instructor
 from openai import AsyncOpenAI
@@ -17,47 +14,6 @@ from langchain_openai import ChatOpenAI
 # TODO: add support for ollama here
 client_instructor = instructor.apatch(AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY")))
 
-class AvatarDetails(BaseModel):
-    bgColor: Optional[str] = Field(None, description="Background color of the avatar")
-    hairColor: Optional[str] = Field(None, description="Hair color of the avatar")
-    shirtColor: Optional[str] = Field(None, description="Shirt color of the avatar")
-    skinColor: Optional[str] = Field(None, description="Skin color of the avatar")
-    earSize: Optional[str] = Field(None, description="Ear size style of the avatar")
-    hairStyle: Optional[str] = Field(None, description="Hair style of the avatar")
-    noseStyle: Optional[str] = Field(None, description="Nose style of the avatar")
-    shirtStyle: Optional[str] = Field(None, description="Shirt style of the avatar")
-    facialHairStyle: Optional[str] = Field(None, description="Facial hair style of the avatar")
-    glassesStyle: Optional[str] = Field(None, description="Glasses style of the avatar")
-    eyebrowsStyle: Optional[str] = Field(None, description="Eyebrows style of the avatar")
-    speakSpeed: Optional[int] = Field(None, description="Speed at which the avatar speaks")
-    blinkSpeed: Optional[int] = Field(None, description="Speed at which the avatar blinks")
-
-class Tools(BaseModel):
-    search: Dict[str, str] = Field(..., description="Tool for searching information with a description of the activity")
-    scrape: Dict[str, str] = Field(..., description="Tool for scraping data with a description of the activity")
-
-class ExpertModel(BaseModel):
-    type: Optional[str] = Field(None, description="Type of the object, e.g., 'expert'")
-    name: str = Field(..., description="Name of the expert")
-    age: Optional[int] = Field(None, description="Age of the expert")
-    role: str = Field(..., description="Role of the expert, e.g., 'Designer'")
-    goal: str = Field(..., description="Goal or objective of the expert")
-    backstory: str = Field(..., description="Backstory of the expert detailing previous experiences and specializations")
-    collaborate: bool = Field(..., description="Flag indicating whether the expert is open to collaboration")
-    avatar: Optional[AvatarDetails] = Field(None, description="Detailed avatar settings of the expert")
-    tools: Tools = Field(..., description="Tools associated with the expert and their specific functions")
-    avatar_id: str = Field(..., description="Identifier for the field associated with the avatar")
-
-class TaskContext(BaseModel):
-    context: str = Field(..., description="The context of the task")
-    schema: Optional[Dict] = Field(default=None, description="Optional and unrestricted schema dictionary")
-    name: str = Field(..., description="The name of the task")
-    task: str = Field(..., description="Description of the task")
-
-class ImprovedTask(BaseModel):
-    description: str = Field(..., description="An easier to understand description for the task to perform")
-    expected_output: str = Field(..., description="A description of the expected output for the task")
-    coordinator_backstory: str = Field(..., description="A backstory description for a coordinator LLM agent specific for delegating this task")
 
 class Meeting:
     def __init__(self, manager, meeting_id, name, context, task, schema):
@@ -138,12 +94,28 @@ class Meeting:
                 else:
                     step_object.append({ "type":"step", "data":str(step) })
 
+            # prepare/init the 'expert' ready to use 'expert_action' object
+            expert_action = {}
+            expert_action["valid"] = False
+            expert_action["kind"] = ""
+            expert_action["speak"] = []
+            expert_action["expert_id"] = expert_id
+            expert_action["tool_id"] = ""
+            # build the real expert_action object
+            for step in step_object:
+                if step["type"] == "tool" and step["data"]["error"] == False:
+                    expert_action["kind"] = "tool"
+                    expert_action["tool_id"] = step["data"]["tool_id"]
+                    expert_action["tool_input"] = step["data"]["tool_input"]
+                    expert_action["speak"].append(step["data"]["log"])
+                    break
             # build payload
             payload = {
                 "action": "reportAgentSteps",
                 "data": step_object,
                 "expert_id": expert_id,
-                "expert_role": expert_role
+                "expert_role": expert_role,
+                "expert_action": expert_action
             }
             await self.send_data(payload)
             #print('DEBUG: reportAgentSteps called',json.dumps(step_object))
@@ -190,7 +162,7 @@ class Meeting:
             print("DEBUG EXPERT TOOLS: tool",str(tool))
             if tool is not None:
                 tools.append(tool)
-                
+
         # create report specific for Expert
         def reportAgentStepsSync(step_output):
             # Get the current running loop and create a new task
@@ -310,17 +282,6 @@ class Meeting:
                 except Exception as e:
                     print("ERROR: tool not found", e)
         # create a task object
-        def onTaskFinished(output:TaskOutput):
-            # send the output to the frontend
-            #pydantic_schema_ = json2pydantic(task.schema)
-            #output_pydantic = pydantic_schema_(**output.exported_output)
-            self.sendDataSync({ 
-                "action": "finishedMeeting",
-                "data": {
-                    "raw": output.raw_output
-                }
-            })
-
         task = Task(
             description=improved.description,
             output_pydantic=pydantic_schema,
@@ -336,7 +297,8 @@ class Meeting:
             tasks=[task],
             verbose=True,
             process=Process.hierarchical,
-            manager_llm=ChatOpenAI(model="gpt-4")
+            manager_llm=ChatOpenAI(model="gpt-4"),
+            memory=False
         )
         # launch the crew
         print("Starting CREW processing ..")
@@ -357,8 +319,11 @@ class Meeting:
             from crewai_tools import SerperDevTool
             return SerperDevTool()
         elif tool_id == "scrape":
-            from crewai_tools import ScrapeWebsiteTool
-            return ScrapeWebsiteTool()
+            #from crewai_tools import ScrapeWebsiteTool
+            #from tools.scrape_website_html_tool import ScrapeWebsiteTool
+            #return ScrapeWebsiteTool() 
+            from crewai_tools import WebsiteSearchTool
+            return WebsiteSearchTool() 
         return None
     
     def create_meeting(self, request):

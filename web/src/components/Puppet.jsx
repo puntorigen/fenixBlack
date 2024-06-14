@@ -59,26 +59,37 @@ const Puppet = forwardRef(({
         }
     };
 
-    const speak = (inputText, speed = speakSpeed, pause = 150, delayErase = 300) => {
+    const speak = (inputText, speed = speakSpeed, pause = 150, delayErase = 300, onEnd) => {
         clearSpeakInterval(); // Clear any existing interval to prevent overlap
-        const words = inputText.split(" ");
-        let index = 0;
-        speakIntervalRef.current = setInterval(() => {
-            if (index < words.length) {
-                setText(words.slice(0, index + 1).join(" "));
-                setMouthStyle(prev => (prev === 'smile' ? 'laughing' : 'smile'));
-                index++;
-            } else {
-                clearSpeakInterval();
-                setTimeout(() => {
-                    setMouthStyle('smile');
+        if (typeof inputText !== 'string' && Array.isArray(inputText)) {
+            // for every item in inputText, call speak recursively waiting for the previous to finish
+            const [first, ...rest] = inputText;
+            speak(first, speed, pause, delayErase, () => {
+                if (rest.length > 0) {
+                    speak(rest, speed, pause, delayErase, onEnd);
+                }
+            });
+        } else {        
+            const words = inputText.split(" ");
+            let index = 0;
+            speakIntervalRef.current = setInterval(() => {
+                if (index < words.length) {
+                    setText(words.slice(0, index + 1).join(" "));
+                    setMouthStyle(prev => (prev === 'smile' ? 'laughing' : 'smile'));
+                    index++;
+                } else {
+                    clearSpeakInterval();
                     setTimeout(() => {
-                        onSpeakEnd && onSpeakEnd();  // Call the callback function if provided
-                        setText("");
-                    }, delayErase);
-                }, pause);
-            }
-        }, speed);
+                        setMouthStyle('smile');
+                        setTimeout(() => {
+                            setText("");
+                            onSpeakEnd && onSpeakEnd();  // Call the callback prop if provided
+                            onEnd && onEnd();  // Call the callback function if provided
+                        }, delayErase);
+                    }, pause);
+                }
+            }, speed);
+        }
     };
 
     const play = async(animationName, colors={}, loop=false) => {

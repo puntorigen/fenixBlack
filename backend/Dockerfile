@@ -12,6 +12,7 @@ RUN pip install --no-cache-dir fastapi uvicorn sqlmodel python-dotenv openai ins
 #RUN pip install --no-cache-dir crewai "crewai[tools]" 
 RUN pip install --no-cache-dir https://github.com/joaomdmoura/crewAI/archive/main.zip
 RUN pip install --no-cache-dir "crewai[tools]" 
+RUN pip install --no-cache-dir embedchain
 
 # Set the working directory
 WORKDIR /app
@@ -21,7 +22,7 @@ COPY . /app
 
 # Copy helper scripts
 COPY docker /app/docker
-COPY crew /app/crew
+COPY tools /app/tools
 RUN chmod +x /app/docker/install_ollama.sh
 #COPY docker-compose.yml /docker-compose.yml
 #COPY docker-compose.yml /docker-compose.yml

@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback, useState, forwardRef, useImperativeHandle } from 'react';
-import { zodToJson } from '../utils/utils';
+import { zodToJson,splitSentences } from '../utils/utils';
 
 const useRefs = () => {
     const refs = useRef({});
@@ -13,7 +13,7 @@ const useRefs = () => {
     return [ refs, register ];
 };
 
-const Meeting = forwardRef(({ name, task, outputKey, children }, refMain) => {
+const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMain) => {
     const [refs, register] = useRefs();
     const [experts, setExperts] = useState({});
     const websocketRef = useRef(null);
@@ -65,7 +65,7 @@ const Meeting = forwardRef(({ name, task, outputKey, children }, refMain) => {
         start: async(context,schema)=>{
             // start meeting with given context, and zod output schema
             // 1. build a JSON of the meeting info + children JSON info + zod schema JSON
-            const onConnect = () => {            
+            const onConnect = async() => {            
                 let payload = {
                     meta: {
                         context, 
@@ -82,7 +82,7 @@ const Meeting = forwardRef(({ name, task, outputKey, children }, refMain) => {
                 }
             }
             // 2. connect to backend via websocket and send data
-            const handleMessage = (event) => {
+            const handleMessage = async(event) => {
                 // 3. wait for responses and update the children with the new data
                 let obj = event.data;
                 try {
@@ -92,35 +92,106 @@ const Meeting = forwardRef(({ name, task, outputKey, children }, refMain) => {
                 // Optionally close the websocket if the task is complete
                 // if obj is string
                 if (typeof obj === 'string' &&  obj === 'KEEPALIVE') { //ignore keepalive events
+                    console.log('Received keepalive event.');
                 } else if (obj?.action === 'server_status') {
                 } else if (obj?.action === 'createTask') {
                     // dummy, update an avatar with the data (just testing)
+                    console.log('Received data:', obj);
                     if (refs.current['field-1']) {
                         refs.current['field-1'].speak(obj.data);
                     }
                 } else if (obj?.action === 'improvedTask') {
                     // dummy, update an avatar with the data (just testing) 
+                    console.log('Received data:', obj);
                     if (refs.current['field-0']) {
-                        refs.current['field-0'].speak(obj.data.description);
+                        // split the description into an array 
+                        const sentences = splitSentences(obj.data.description);
+                        //console.log('sentences',sentences);
+                        refs.current['field-0'].speak(sentences);
                     }
+                } else if (obj?.action === 'reportAgentSteps') {
+                    // @TODO: move these conditions into the backend
+                    let play = {
+                        valid: false,
+                        sentences: [],
+                        expert_id: null,
+                        tool_id: null,
+                        kind: null
+                    };
+                    // iterate over obj.data array
+                    for (const key in obj.data) {
+                        if (obj.data[key].type === 'tool') {
+                            if (obj.data[key].data?.error === false) {
+                                if (obj.data[key].data.tool_id && obj.data[key].data.tool_id !== '') {
+                                    // animate the avatar's tool and speak the 'log'
+                                    play.valid = true;
+                                    play.kind = 'tool';
+                                    play.expert_id = obj.expert_id;
+                                    play.tool_id = obj.data[key].data.tool_id;
+                                    play.sentences.push(obj.data[key].data.log);
+                                }
+                            }
+                        } else if (play.kind === 'kind' && obj.data[key].type === 'response' && obj.data[key].data) {
+                            // this should the response of the tool
+                            let lines_ = obj.data[key].data.lines.join('.');  
+                            if (lines_.indexOf(`won't be used because`) !== -1 || lines_ === '') {
+                                play.valid = false;
+                                break;
+                            }
+                            // only add the lines if they are not empty and until 'Action:' appears
+                            for (let i = 0; i < obj.data[key].data.lines.length; i++) {
+                                if (obj.data[key].data.lines[i].indexOf('Action:') !== -1) {
+                                    break;
+                                }
+                                play.sentences.push(obj.data[key].data.lines[i]);
+                                //lines_ += ;
+                            }
+                        }
+                    }
+                    // only play animation if 'play.valid' is true
+                    if (play.kind === 'tool' && play.valid) {
+                        console.log('DEBUG: TOOL DETECTED:',play);
+                    } else {
+                        console.log('DEBUG: TOOL NOT DETECTED: raw_obj',obj);
+                    }
+                    if (play.valid === true) {
+                        if (refs.current[play.expert_id]) {
+                            await refs.current[play.expert_id].play(play.tool_id);
+                            refs.current[play.expert_id].speak(play.sentences,400,150,300,()=>{
+                                refs.current[play.expert_id].avatarSize('100%');
+                            }); 
+                        }
+                    }
+
                 } else if (obj?.action === 'finishedMeeting') {
                     // dummy, update an avatar with the data (just testing)
+                    // stop all animations and speak the final message
+                    // iterate refs
+                    for (const expert_id in refs.current) {
+                        if (refs.current[expert_id].stop) {
+                            refs.current[expert_id].avatarSize('100%');
+                            refs.current[expert_id].stop();
+                        }
+                    }
+                    //
                     if (refs.current['field-0']) {
                         refs.current['field-0'].speak("The meeting was completed, check the console output for the data.");
-                        let zod_schema = {};  
-                        try {
-                            zod_schema = schema.parse(obj.data);
-                            console.log('Schema enforced result:', zod_schema);
-                        } catch(e) {
-                            console.error('Schema enforcement failed:', e);
-                            console.log('Received data:', obj);
-                        }
+                    }
+                    let zod_schema = {};  
+                    try {
+                        zod_schema = schema.parse(obj.data);
+                        console.log('Schema enforced result:', zod_schema);
+                    } catch(e) {
+                        console.error('Schema enforcement failed:', e);
+                        console.log('Received data:', obj);
                     }
                     // 4. wait for end of meeting, convert output JSON to zod schema and return, and assign raw output to outputKey ref variable
                     if (websocketRef.current) {
                         websocketRef.current.close();
                         console.log('Meeting ended and socket closed.');
                     }
+                    // 5. call onFinish callback with the zod schema enforced data
+                    onFinish && onFinish(zod_schema);
                 } else {
                     console.log('(unhandled) Received data:', obj);
                 }
