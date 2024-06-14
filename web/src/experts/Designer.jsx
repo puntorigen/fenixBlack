@@ -17,8 +17,8 @@ const Designer = forwardRef(({
         name,
         age,
         role: 'Designer',
-        goal: `Create visually appealing and user-friendly designs.`,
-        backstory: `With a decade of experience in graphic and digital design, specializing in UX/UI and brand identity.`,
+        goal: `Create visually appealing and user-friendly designs, and brand identify guidelines, brochures, etc.`,
+        backstory: `With a decade of experience in graphic and digital design, specializing in UX/UI and brand identity, you search all the needed information to create the best design, paying special attention into crafting design related queries, and adapting the responses to use materials a developer can understand.`,
         collaborate: true,
         avatar: {
             bgColor: '#E75A01', 
@@ -27,17 +27,20 @@ const Designer = forwardRef(({
             skinColor: avatar.skinColor.pale,
             earSize: avatar.earSize.medium, 
             hairStyle: avatar.hairStyle.dannyPhantom,
-            noseStyle: avatar.noseStyle.pointed,
+            noseStyle: avatar.noseStyle.pointed, 
             shirtStyle: avatar.shirtStyle.open,
             facialHairStyle: avatar.facialHairStyle.none,
             glassesStyle: avatar.glassesStyle.none,
             eyebrowsStyle: avatar.eyebrowsStyle.eyelashesUp,
-            speakSpeed: 200,
+            speakSpeed: 500,
             blinkSpeed: 3000,
         },
         tools: { // defines animations and which tools are available for this agent
             [tools.search]: { 'searching':'Searching websites for more information.' },
+            [tools.website_search]: { 'searching':'Searching website for more information.' },
             [tools.scrape]: { 'analyzing:#FFFFFF': 'Understanding the design ..' },
+            [tools.pdf_reader]: { 'reading': 'Reading pdf ..' },
+            [tools.youtube_video_search]: { 'reading': 'Searching on youtube video transcription ..' },
         }
     };
 

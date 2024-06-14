@@ -32,14 +32,14 @@ const Agent = forwardRef(({
                     let animKey = Object.keys(meta.tools[tool])[0]; // searching
                     let text = meta.tools[tool][animKey];
                     let extra = {};
-                    if (animKey.indexOf(':') !== -1) {
+                    if (animKey.indexOf(':') !== -1) { 
                         extra = { tint: animKey.split(':')[1] };
                         animKey = animKey.split(':')[0];
                     } 
                     await puppetRef.current.play(animKey,{ bgcolor, ...extra },true);
-                    await puppetRef.current.avatarSize('20%','#29465B');
+                    puppetRef.current.avatarSize('20%','#29465B');
                     await puppetRef.current.speak(text,400,150,textDelay,async()=>{
-                        await puppetRef.current.avatarSize('100%');
+                        puppetRef.current.avatarSize('100%');
                     }); 
                 }
             }

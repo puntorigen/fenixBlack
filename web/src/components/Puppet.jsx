@@ -55,6 +55,7 @@ const Puppet = forwardRef(({
     const clearSpeakInterval = () => {
         if (speakIntervalRef.current) {
             clearInterval(speakIntervalRef.current);
+            setText(" ");
             speakIntervalRef.current = null;
         }
     };
@@ -134,7 +135,7 @@ const Puppet = forwardRef(({
                     console.log('animation ended');
                     setCurrentBgColor(bgColor);  // Reset background color once animation is complete
                     animationInstance.current.destroy();
-                }
+                } 
             }
         });
     };

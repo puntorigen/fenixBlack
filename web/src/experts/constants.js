@@ -2,6 +2,9 @@
 export const tools = {
     search: 'search',
     scrape: 'scrape',
+    website_search: 'website_search',
+    pdf_reader: 'pdf_reader',
+    youtube_video_search: 'youtube_video_search',
 }
 
 export const avatar = {

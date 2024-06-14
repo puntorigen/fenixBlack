@@ -1,22 +1,24 @@
 import React, { useRef } from 'react';
 import './App.css';
+import { WiredCard, WiredButton, WiredInput } from 'react-wired-elements';
+import { brandSchema, brochureSchema, privacyPolicy } from './schemas';
+import { tools } from './experts/constants';
+
 import Meeting from './components/Meeting';
 import AccountManager from './experts/AccountManager';
 import Designer from './experts/Designer';
 import Lawyer from './experts/Lawyer';
-import { WiredCard, WiredButton, WiredInput } from 'react-wired-elements';
-import { brandSchema, brochureSchema, privacyPolicy } from './schemas';
-import { tools } from './experts/constants';
+import ResearchAnalyst from './experts/ResearchAnalyst';
 
 function App() {
   const meetingBrand = useRef(null);
   const meetingPrivacy = useRef(null);
   return (
     <div className="App">
+      {/* 
       <header className="App-header">
         AI Multi Expert System<br/><br/>
       </header>
-      {/* 
       // info = await factory.current.start("brandBuilder", 
             " for www.xx.com",
             brandSchema
@@ -46,10 +48,7 @@ function App() {
       </Factory>
       */}
       <div>
-      </div>
-      <div>
         {/*
-        
         <Meeting 
           name="privacyPolicy" 
           ref={meetingPrivacy} 
@@ -64,7 +63,6 @@ function App() {
             ['https://ico.org.uk/media/for-organisations/guide-to-the-general-data-protection-regulation-gdpr-1-0.pdf']
           } />
         </Meeting>
-
         */}
 
         <Meeting 
@@ -76,6 +74,7 @@ function App() {
             console.log('meeting onFinish called',output);
           }}>
           <AccountManager name="Mauricio" />
+          <ResearchAnalyst />
           <Designer />
         </Meeting>
       </div>

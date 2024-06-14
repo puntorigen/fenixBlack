@@ -342,15 +342,19 @@ class Meeting:
         if tool_id == "search":
             from crewai_tools import SerperDevTool
             return SerperDevTool()
-        elif tool_id == "scrape":
-            #from crewai_tools import ScrapeWebsiteTool
-            #from tools.scrape_website_html_tool import ScrapeWebsiteTool
-            #return ScrapeWebsiteTool() 
+        elif tool_id == "website_search":
             from crewai_tools import WebsiteSearchTool
-            tool_ = WebsiteSearchTool() # overwrite default name,description, to use it for scraping and not search
-            tool_.name = "Read website content"
-            tool_.description = "A tool that can be used to read a website content."
-            return tool_ 
+            return WebsiteSearchTool()
+        elif tool_id == "scrape":
+            #from tools.scrape_website_html_tool import ScrapeWebsiteTool
+            from crewai_tools import ScrapeWebsiteTool
+            return ScrapeWebsiteTool() 
+        elif tool_id == "pdf_reader":
+            from crewai_tools import PDFSearchTool
+            return PDFSearchTool() 
+        elif tool_id == "youtube_video_search":
+            from crewai_tools import YoutubeVideoSearchTool
+            return YoutubeVideoSearchTool() 
         return None
     
     def create_meeting(self, request):

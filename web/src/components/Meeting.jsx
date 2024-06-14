@@ -221,7 +221,8 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMa
 
     return (
         <div>
-            <h1 style={{ color:'#FFF'}}>Meeting</h1>
+            <h1 style={{ color:'#FFF'}}>Meeting</h1> 
+            { task && <center><p style={{ color:'yellow', width:'500px' }}>Task: {task}</p></center> }
             {enhancedChildren}
         </div>
     );
