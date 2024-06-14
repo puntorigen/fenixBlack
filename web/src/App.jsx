@@ -27,14 +27,14 @@ function App() {
             brochureSchema
         );
 
-      <Factory industry="marketing" ref={factory}>
-        <WhiteBoard type={"thought"} for="single|all" ref={thinkingBoard}/> // shows a mindmap of the thought or output process
+      <Factory industry="marketing" ref={factory} flow="brandBuilder->brochure->brochurePDF" onFinish={()=>{}}>
+        <WhiteBoard type={"thought"} for="single|all" ref={thinkingBoard}/> // shows a mindmap of the whole factory progress
         <Meeting name="brandBuilder" ref={meetingBrand} task="research the products, services and build the design brand guidelines" outputKey="brand">
             <WhiteBoard type={"output"} /> //shows a mindmap of the overall work output
             <AccountManager age={37} gender={"male"} name={"Mauricio"} />
             <Designer gender={"female"} name={"Marta"} />
         </Meeting>
-        <Meeting name="brochure" ref={meetingBrochure} objective="Design a PDF brochure" outputKey="brochure">
+        <Meeting name="brochure" ref={meetingBrochure} task="Create the material for a PDF brochure" outputKey="brochure">
             <AccountManager name={"Mauricio"} /> //each 'name' has memory context history
             <PrintDesigner gender={"male"} name={"Christian"} /> // expert at creating designs for print
             <PDFBuilder gender={"male"} name={"Pablo"} /> // (dev like) expert at creating PDFs using weasyPrint in the back
@@ -42,6 +42,7 @@ function App() {
             <ProductManager name={"Rodrigo"} />
             <Reviewer name={"Leo"} task={"Checks the brochure for errors in grammar, spelling, and punctuation."} />
         </Meeting>
+        <BrochurePDF name="brochurePDF" ref={brochurePDF} output="" /> // this takes the result from the previous step as input, and creates the PDF file as base64
       </Factory>
       */}
       <div>
@@ -59,8 +60,11 @@ function App() {
           }}>
           <AccountManager name="Mauricio1" />
           <Designer />
-          <Lawyer />
+          <Lawyer study={ //learns the given data if needed
+            ['https://ico.org.uk/media/for-organisations/guide-to-the-general-data-protection-regulation-gdpr-1-0.pdf']
+          } />
         </Meeting>
+
         */}
 
         <Meeting 

@@ -50,34 +50,26 @@ app = FastAPI(lifespan=lifespan)
 async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
     manager = ConnectionManager()
     await manager.connect(websocket, meeting_id)
-    try:
+    try: 
         while True:
             data = await websocket.receive_text()
             from_frontend = json.loads(data)
+            # TODO: detect command from frontend first
+            if not from_frontend["cmd"]: 
+                break
+            if from_frontend["cmd"] == "create_meeting":
+                current_meeting = Meeting(
+                    manager=manager,
+                    experts=from_frontend["experts"],
+                    meeting_id=meeting_id,
+                    meta=from_frontend["meta"]
+                )
+                await current_meeting.launch_task()
+                #break
+            else:
+                print("Unknown payload cmd received from frontend.", from_frontend)
+                break
 
-            current_meeting = Meeting(
-                manager=manager,
-                meeting_id=meeting_id,
-                name=from_frontend["meta"]["name"], 
-                context=from_frontend["meta"]["context"], 
-                task=from_frontend["meta"]["task"], 
-                schema=from_frontend["meta"]["schema"]
-            )
-            #print("data received",from_frontend)
-            # build experts
-            # for every expert on from_frontend["experts"] (Dict), create an expert, append to experts list
-            experts = []
-            for expert in from_frontend["experts"]:
-                expert_object = from_frontend["experts"][expert]
-                expert_json = ExpertModel(**expert_object)
-                expert_ = current_meeting.create_expert(expert=expert_json)
-                experts.append(expert_)
-            #print("DEBUG: experts",experts) 
-            # build task and crew 
-            #result = await current_meeting.launch_task(experts,TaskContext(**from_frontend["meta"]))
-            await current_meeting.launch_task(experts,TaskContext(**from_frontend["meta"]))
-            break
-        
         # end meeting
         manager.disconnect(websocket, meeting_id)
 

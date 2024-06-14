@@ -37,10 +37,10 @@ const Agent = forwardRef(({
                         animKey = animKey.split(':')[0];
                     } 
                     await puppetRef.current.play(animKey,{ bgcolor, ...extra },true);
-                    puppetRef.current.avatarSize('20%','#29465B');
-                    puppetRef.current.speak(text,400,150,textDelay,()=>{
-                        puppetRef.current.avatarSize('100%');
-                    });
+                    await puppetRef.current.avatarSize('20%','#29465B');
+                    await puppetRef.current.speak(text,400,150,textDelay,async()=>{
+                        await puppetRef.current.avatarSize('100%');
+                    }); 
                 }
             }
         },

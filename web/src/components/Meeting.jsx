@@ -67,8 +67,9 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMa
             // 1. build a JSON of the meeting info + children JSON info + zod schema JSON
             const onConnect = async() => {            
                 let payload = {
+                    cmd: 'create_meeting',
                     meta: {
-                        context, 
+                        context,
                         schema: zodToJson(schema),
                         name, task
                     },

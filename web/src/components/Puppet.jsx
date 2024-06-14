@@ -59,32 +59,32 @@ const Puppet = forwardRef(({
         }
     };
 
-    const speak = (inputText, speed = speakSpeed, pause = 150, delayErase = 300, onEnd) => {
+    const speak = async(inputText, speed = speakSpeed, pause = 150, delayErase = 300, onEnd) => {
         clearSpeakInterval(); // Clear any existing interval to prevent overlap
         if (typeof inputText !== 'string' && Array.isArray(inputText)) {
             // for every item in inputText, call speak recursively waiting for the previous to finish
             const [first, ...rest] = inputText;
-            speak(first, speed, pause, delayErase, () => {
+            await speak(first, speed, pause, delayErase, async() => {
                 if (rest.length > 0) {
-                    speak(rest, speed, pause, delayErase, onEnd);
+                    await speak(rest, speed, pause, delayErase, onEnd);
                 }
             });
         } else {        
             const words = inputText.split(" ");
             let index = 0;
-            speakIntervalRef.current = setInterval(() => {
+            speakIntervalRef.current = setInterval(async() => {
                 if (index < words.length) {
                     setText(words.slice(0, index + 1).join(" "));
                     setMouthStyle(prev => (prev === 'smile' ? 'laughing' : 'smile'));
                     index++;
                 } else {
                     clearSpeakInterval();
-                    setTimeout(() => {
+                    setTimeout(async() => {
                         setMouthStyle('smile');
-                        setTimeout(() => {
+                        setTimeout(async() => {
                             setText("");
+                            onEnd && await onEnd();  // Call the callback function if provided
                             onSpeakEnd && onSpeakEnd();  // Call the callback prop if provided
-                            onEnd && onEnd();  // Call the callback function if provided
                         }, delayErase);
                     }, pause);
                 }

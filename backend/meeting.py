@@ -16,14 +16,21 @@ client_instructor = instructor.apatch(AsyncOpenAI(api_key=os.getenv("OPENAI_API_
 
 
 class Meeting:
-    def __init__(self, manager, meeting_id, name, context, task, schema):
-        self.manager = manager
-        self.meeting_id = meeting_id
-        self.name = name
-        self.context = context
-        self.task = task
-        self.schema = schema
+    def __init__(self, manager, experts, meeting_id, meta):
         self.tool_name_map = {} # map tool names to tool ids
+        self.manager = manager
+        self.experts = []
+        for expert in experts:
+            expert_json = ExpertModel(**experts[expert])
+            expert_ = self.create_expert(expert=expert_json)
+            self.experts.append(expert_)
+
+        self.meeting_id = meeting_id
+        self.meta = TaskContext(**meta) # full meta data
+        self.name = meta["name"] # TODO refactor code below to use self.meta["key"] instead
+        self.context = meta["context"]
+        self.task = meta["task"]
+        self.schema = meta["schema"]
 
     async def send_data(self, data):
         try:
@@ -158,10 +165,9 @@ class Meeting:
         # create list of tools for this expert
         tools = []
         for key in expert.tools:
-            print("DEBUG EXPERT TOOLS: key",key[0])
             tool = self.get_tool(key[0])
             self.tool_name_map[tool.name] = key[0]
-            print("DEBUG EXPERT TOOLS: tool",str(tool))
+            #print("DEBUG EXPERT TOOLS: tool",str(tool))
             if tool is not None:
                 tools.append(tool)
 
@@ -237,13 +243,15 @@ class Meeting:
             step_callback=reportAgentStepsSync
         )
 
-    async def launch_task(self, experts: list[ExpertModel], task: TaskContext):
+    async def launch_task(self):
         # build a better description for the task using the task context, name and task
         # let frontend kwnow that the task is being created/thinked
         await self.send_data({
             "action": "createTask",
             "data": "Improving task definition",
         })
+        experts = self.experts
+        task = self.meta
         # TODO: create instructor call here
         improved = await client_instructor.chat.completions.create(
             model="gpt-4",
@@ -283,16 +291,36 @@ class Meeting:
             agent=coordinator
         )
         # build crew
+        def task_callback(task_output: TaskOutput):
+            # send the task output to the frontend
+            try:
+                # build payload
+                data_json = task_output.raw_output
+                try:
+                    data_json = json.loads(data_json)
+                except Exception as e:
+                    pass
+                payload = {
+                    "action": "finishedMeeting",
+                    "agent": task_output.agent,
+                    "data": data_json
+                }
+                self.sendDataSync(payload)
+            except Exception as e:
+                print('DEBUG: task_callback ERROR',e)
+
         crew = Crew(
             agents=experts,
             tasks=[task],
-            verbose=True,
+            verbose=1,
             process=Process.hierarchical,
             manager_llm=ChatOpenAI(model="gpt-4"),
-            #memory=False
+            memory=False, 
+            #task_callback=task_callback
         )
         # launch the crew
         print("Starting CREW processing ..")
+        #result = crew.kickoff()
         result = await crew.kickoff_async()
         result_json = result
         try:
@@ -319,7 +347,10 @@ class Meeting:
             #from tools.scrape_website_html_tool import ScrapeWebsiteTool
             #return ScrapeWebsiteTool() 
             from crewai_tools import WebsiteSearchTool
-            return WebsiteSearchTool() 
+            tool_ = WebsiteSearchTool() # overwrite default name,description, to use it for scraping and not search
+            tool_.name = "Read website content"
+            tool_.description = "A tool that can be used to read a website content."
+            return tool_ 
         return None
     
     def create_meeting(self, request):

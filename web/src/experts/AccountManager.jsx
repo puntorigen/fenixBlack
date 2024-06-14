@@ -4,9 +4,10 @@ import { tools, avatar } from './constants';
 
 const AccountManager = forwardRef(({
     id="account-manager",
-    name="Mauricio",
-    age=37,
-    gender="male",
+    name="Mauricio",  // used for the displayed personality of the agent and maybe memory
+    age=37,  // used for the displayed personality of the agent
+    gender="male", // used for the displayed personality of the agent
+    task="", // specific task for this agent instance
     style,
     onAnimationEnd,
 }, ref) => {
@@ -35,6 +36,9 @@ const AccountManager = forwardRef(({
             [tools.scrape]: { 'reading': 'Reading the contents ..' },
         } 
     };
+    if (task !== "") {
+        meta.backstory += `. Your current main task is to '${task}'`;
+    }
 
     const setup = () => {
         // Example: set up Agent based on AccountManager's props like age and gender
