@@ -20,6 +20,7 @@ class Meeting:
     def __init__(self, manager, experts, meeting_id, meta):
         self.tool_name_map = {} # map tool names to tool ids
         self.manager = manager
+        self.loop = None
         self.experts = []
         for expert in experts:
             expert_json = ExpertModel(**experts[expert])
@@ -35,7 +36,7 @@ class Meeting:
 
     async def send_data(self, data): 
         try:
-            print("DEBUG: send_data called (meeting_id:"+self.meeting_id+")",data)
+            print("DEBUG: send_data called (meeting_id:"+self.meeting_id+")")
             await self.manager.send_message(json.dumps(data), self.meeting_id)
         except Exception as e:
             print("DEBUG: send_data ERROR",e)
@@ -183,13 +184,12 @@ class Meeting:
     def sendDataSync(self, data):
         # Get the current running loop and create a new task
         def createNewLoop():
-            loop = asyncio.new_event_loop()
+            self.loop = asyncio.new_event_loop()
             #asyncio.set_event_loop(loop)
-            loop.run_until_complete(self.send_data(data))
+            self.loop.run_until_complete(self.send_data(data))
             #asyncio.create_task(self.send_data(data))
         try:
-            loop = asyncio.get_event_loop()
-            loop.run_until_complete(self.send_data(data))
+            self.loop.run_until_complete(self.send_data(data))
             #asyncio.create_task(self.send_data(data))
 
         except Exception as e:
@@ -269,8 +269,8 @@ class Meeting:
     def launch_task(self):
         # build a better description for the task using the task context, name and task
         # let frontend kwnow that the task is being created/thinked
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
         
         self.sendDataSync({
             "action": "createTask",
@@ -338,19 +338,18 @@ class Meeting:
         crew = Crew(
             agents=experts,
             tasks=[task],
-            verbose=False,
+            verbose=1,
             process=Process.hierarchical,
             manager_llm=ChatOpenAI(model="gpt-4"),
-            memory=True, 
+            memory=False,  
             task_callback=task_callback
         ) 
         # launch the crew
         print("Starting CREW processing ..")
         result = crew.kickoff()
         #result = await crew.kickoff_async()
-        metrics = json.dump(crew.usage_metrics)
         result_json = result
-        try:
+        try: 
             result_json = result.model_dump()
         except Exception as e:
             print("DEBUG: result_json ERROR",e)
@@ -359,105 +358,10 @@ class Meeting:
         # reply END to the frontend
         payload = { 
             "action": "finishedMeeting",
-            "data": result_json,
-            "usage_metrics": metrics
+            "data": result_json
         } 
         self.sendDataSync(payload)
-        return result
-
-    async def launch_task2(self):
-        # build a better description for the task using the task context, name and task
-        # let frontend kwnow that the task is being created/thinked
-        await self.send_data({
-            "action": "createTask",
-            "data": "Improving task definition",
-        })
-        experts = self.experts
-        task = self.meta
-        # TODO: create instructor call here
-        improved = await client_instructor.chat.completions.create(
-            model="gpt-4",
-            response_model=ImprovedTask, 
-            messages=[
-                {"role": "system", "content": "# act as an expert prompt engineer. Consider the following JSON object as the context for writing an easier to understand task 'description' that a junior analyst can understand, and a clear 'expected_output' field that describes the expected data output from the given schema in a couple of paragraphs."},
-                {"role": "user", "content": dedent(f"""
-                    # Use the following JSON schema to understand the expected_output:
-                    ```{json.dumps(task.schema)}```
-
-                    # It's most important that you never loose focus on the task expected to be achieved by the user, which is:
-                    ```{task.task}```
-                    # using the following context:
-                    ```{task.context}```
-                """)},
-            ],
-            temperature=0.02,
-            stream=False,
-        )
-        await self.send_data({
-            "action": "improvedTask",
-            "data": improved.model_dump(),
-        })
-        print("Improved task", improved.model_dump())
-        # create Task Agent (Coordinator)
-        print("DEBUG: creating task agent (coordinator)")
-        coordinator = self.create_task_agent(task, improved)
-        # TODO: convert task JSON schema into Pydantic model
-        pydantic_schema = json2pydantic(task.schema)
-        print("Pydantic schema", pydantic_schema)
-        # create a task object
-        task = Task(
-            description=improved.description,
-            output_pydantic=pydantic_schema,
-            expected_output=improved.expected_output,
-            async_execution=False,
-            agent=coordinator
-        )
-        # build crew
-        def task_callback(task_output: TaskOutput):
-            # send the task output to the frontend
-            try:
-                # build payload
-                data_json = task_output.raw_output
-                try:
-                    data_json = json.loads(data_json)
-                except Exception as e:
-                    pass
-                payload = {
-                    "action": "finishedMeeting",
-                    "agent": task_output.agent,
-                    "data": data_json
-                }
-                self.sendDataSync(payload)
-            except Exception as e:
-                print('DEBUG: task_callback ERROR',e)
-
-        crew = Crew(
-            agents=experts,
-            tasks=[task],
-            verbose=2,
-            process=Process.hierarchical,
-            manager_llm=ChatOpenAI(model="gpt-4o"),
-            memory=False, 
-            task_callback=task_callback
-        )
-        # launch the crew
-        print("Starting CREW processing ..")
-        #result = crew.kickoff()
-        result = await crew.kickoff_async()
-        result_json = result
-        try:
-            result_json = result.model_dump()
-        except Exception as e:
-            print("DEBUG: result_json ERROR",e)
-            result_json = str(result)
-        print("DEBUG: result",result_json)
-        # reply END to the frontend
-        ##to_frontend = { 
-        ##    "action": "finishedMeeting",
-        ##    "data": result_json
-        ##}
-        ##await self.send_data(to_frontend)
-        ##return result
+        return self
 
     def get_tool(self, tool_id):
         # get the tool object given the tool_id
@@ -471,9 +375,9 @@ class Meeting:
             #from tools.scrape_website_html_tool import ScrapeWebsiteTool
             from crewai_tools import ScrapeWebsiteTool
             return ScrapeWebsiteTool() 
-        #elif tool_id == "pdf_reader":
-        #    from crewai_tools import PDFSearchTool
-        #    return PDFSearchTool()
+        elif tool_id == "pdf_reader":
+            from crewai_tools import PDFSearchTool
+            return PDFSearchTool()
         elif tool_id == "youtube_video_search":
             from crewai_tools import YoutubeVideoSearchTool
             return YoutubeVideoSearchTool() 

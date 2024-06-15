@@ -65,7 +65,8 @@ async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
                     meeting_id=meeting_id,
                     meta=from_frontend["meta"]
                 )
-                return await asyncio.to_thread(current_meeting.launch_task)
+                meet = await asyncio.to_thread(current_meeting.launch_task)
+                meet.loop.stop()
                 #await current_meeting.launch_task()
                 #break
             else:

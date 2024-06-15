@@ -126,44 +126,7 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMa
                         play.tool_id = obj.expert_action.tool_id;
                         play.kind = obj.expert_action.kind;
                         play.sentences = obj.expert_action.speak.trim();
-                        // trim sentences                        
-                        if (play.sentences==='') {
-                            play.valid = false;
-                            console.log('DEBUG: No sentences to speak, skipping obj.',obj);
-                        }
                     }
-                    /*
-                    // iterate over obj.data array
-                    for (const key in obj.data) {
-                        if (obj.data[key].type === 'tool') {
-                            if (obj.data[key].data?.error === false) {
-                                if (obj.data[key].data.tool_id && obj.data[key].data.tool_id !== '') {
-                                    // animate the avatar's tool and speak the 'log'
-                                    play.valid = true;
-                                    play.kind = 'tool';
-                                    play.expert_id = obj.expert_id;
-                                    play.tool_id = obj.data[key].data.tool_id;
-                                    play.sentences.push(obj.data[key].data.log);
-                                }
-                            }
-                        } else if (play.kind === 'kind' && obj.data[key].type === 'response' && obj.data[key].data) {
-                            // this should the response of the tool
-                            let lines_ = obj.data[key].data.lines.join('.');  
-                            if (lines_.indexOf(`won't be used because`) !== -1 || lines_ === '') {
-                                play.valid = false;
-                                break;
-                            }
-                            // only add the lines if they are not empty and until 'Action:' appears
-                            for (let i = 0; i < obj.data[key].data.lines.length; i++) {
-                                if (obj.data[key].data.lines[i].indexOf('Action:') !== -1) {
-                                    break;
-                                }
-                                play.sentences.push(obj.data[key].data.lines[i]);
-                                //lines_ += ;
-                            }
-                        }
-                    }
-                    */ 
                     // only play animation if 'play.valid' is true
                     if (play.valid === true) {
                         console.log('DEBUG: TOOL DETECTED:',play,obj,refs.current[play.expert_id]);
@@ -175,7 +138,9 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMa
                                 await refs.current[play.expert_id].stop();
                             });
                         }
-                    }
+                    } else {
+                        console.log('DEBUG: TOOL NOT DETECTED:',obj);
+                    } 
 
                 } else if (obj?.action === 'finishedMeeting') {
                     // dummy, update an avatar with the data (just testing)

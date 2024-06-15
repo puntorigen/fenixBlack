@@ -25,7 +25,7 @@ class ConnectionManager:
         connections = self.rooms.get(room_id, [])
         for connection in list(connections):  # Copy the list to avoid modification during iteration
             try:
-                print("ConnectionManager->send_message->send_text",message)
+                print("ConnectionManager->send_message->send_text") #,message)
                 await connection.send_text(message)
             except Exception as e:
                 # Handle disconnections or errors

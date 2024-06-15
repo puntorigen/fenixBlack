@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir fastapi uvicorn sqlmodel python-dotenv openai ins
 #RUN pip install --no-cache-dir crewai "crewai[tools]" 
 #RUN pip install git+https://github.com/joaomdmoura/crewAI.git@d3b6640b4ad804ca4537d25af0278b0743f511e3
 #RUN pip install git+https://github.com/joaomdmoura/crewAI.git
-RUN pip install git+https://github.com/Fenix-black/crewAI.git
+RUN pip install git+https://github.com/Fenix-black/crewAI.git 
 #RUN pip install --no-cache-dir https://github.com/joaomdmoura/crewAI/archive/main.zip
 RUN pip install --no-cache-dir "crewai[tools]" 
 # required for PDF and embedchain
