@@ -338,28 +338,30 @@ class Meeting:
         crew = Crew(
             agents=experts,
             tasks=[task],
-            verbose=2,
+            verbose=False,
             process=Process.hierarchical,
-            manager_llm=ChatOpenAI(model="gpt-4o"),
-            memory=False, 
+            manager_llm=ChatOpenAI(model="gpt-4"),
+            memory=True, 
             task_callback=task_callback
-        )
+        ) 
         # launch the crew
         print("Starting CREW processing ..")
         result = crew.kickoff()
         #result = await crew.kickoff_async()
+        metrics = json.dump(crew.usage_metrics)
         result_json = result
         try:
             result_json = result.model_dump()
         except Exception as e:
             print("DEBUG: result_json ERROR",e)
-            result_json = str(result)
+            #result_json = result
         print("DEBUG: result",result_json)
         # reply END to the frontend
         payload = { 
             "action": "finishedMeeting",
-            "data": result_json
-        }
+            "data": result_json,
+            "usage_metrics": metrics
+        } 
         self.sendDataSync(payload)
         return result
 

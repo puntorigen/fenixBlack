@@ -37,7 +37,7 @@ const Agent = forwardRef(({
                         animKey = animKey.split(':')[0];
                     } 
                     await puppetRef.current.play(animKey,{ bgcolor, ...extra },true);
-                    puppetRef.current.avatarSize('20%','#29465B');
+                    puppetRef.current.avatarSize('30%','#29465B');
                     await puppetRef.current.speak(text,400,150,200,async()=>{
                         console.log('agent speaking done');
                         puppetRef.current.avatarSize('100%');
