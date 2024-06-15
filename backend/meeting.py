@@ -8,11 +8,12 @@ from utils.utils import json2pydantic
 import json, os, asyncio
 
 import instructor
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, OpenAI
 from langchain_openai import ChatOpenAI
 
 # TODO: add support for ollama here
 client_instructor = instructor.apatch(AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY")))
+client_instructor_sync = instructor.apatch(OpenAI(api_key=os.getenv("OPENAI_API_KEY")))
 
 
 class Meeting:
@@ -32,20 +33,20 @@ class Meeting:
         self.task = meta["task"]
         self.schema = meta["schema"]
 
-    async def send_data(self, data):
+    async def send_data(self, data): 
         try:
             print("DEBUG: send_data called (meeting_id:"+self.meeting_id+")",data)
             await self.manager.send_message(json.dumps(data), self.meeting_id)
         except Exception as e:
             print("DEBUG: send_data ERROR",e)
 
-    async def adaptTextToPersonality(self, text: str, expert: ExpertModel):
+    def adaptTextToPersonality(self, text: str, expert: ExpertModel):
         from typing import Dict, Optional
         from pydantic import BaseModel, Field
         class AdaptedStyle(BaseModel):
             new_text: str = Field(None, description="New text adapted to the given personality using a maximum of 140 characters.")
         
-        adaptText = await client_instructor.chat.completions.create(
+        adaptText = client_instructor_sync.chat.completions.create(
             model="gpt-4o",
             response_model=AdaptedStyle,
             messages=[
@@ -55,7 +56,7 @@ class Meeting:
                     ```{expert.personality}```
 
                     # adapt the following text to the given personality: 
-                    ```{text}```
+                    ```{text}``` 
                 """)},
             ],
             temperature=0.2,
@@ -64,8 +65,8 @@ class Meeting:
         print("Adapted TEXT FOR PERSONALITY: ", adaptText.model_dump())
         return adaptText.new_text
 
-    async def reportAgentSteps(self, step_output, expert: ExpertModel):
-        # send the step output to the frontend
+    def reportAgentStepsSync2(self, step_output, expert: ExpertModel):
+        # send the step output to the frontend 
         try:
             # build step_object object
             step_object = [] 
@@ -104,6 +105,7 @@ class Meeting:
 
                     observation_ = {}
                     observation_["lines"] = []
+                    observation_["lines_raw"] = []
                     if isinstance(observation, str):
                         observation_lines = observation.split('\n')
                         observation_["lines_raw"] = observation_lines
@@ -121,7 +123,13 @@ class Meeting:
                     else:
                         observation_["line"] = str(observation)
 
-                    step_object.append({ "type":"response", "data":observation_ })
+                    # if length of observation["lines"] is same as 'lines_raw' then it's a single line observation
+                    if len(observation_["lines"]) == len(observation_["lines_raw"]):
+                        step_object.append({ "type":"response_str", "data":str(observation) })
+                    else:
+                        # delete observation_["lines"] key
+                        del observation_["lines"]
+                        step_object.append({ "type":"response_obj", "data":observation_ })
                     #step_object.append({ "type":"response_raw", "data":observation })
                 else:
                     step_object.append({ "type":"step", "data":str(step) })
@@ -130,7 +138,7 @@ class Meeting:
             expert_action = {} 
             expert_action["valid"] = False
             expert_action["kind"] = ""
-            expert_action["speak"] = []
+            expert_action["speak"] = ""
             expert_action["expert_id"] = expert.avatar_id
             expert_action["tool_id"] = ""
             # build the real expert_action object
@@ -140,15 +148,15 @@ class Meeting:
                     expert_action["valid"] = True
                     expert_action["tool_id"] = step["data"]["tool_id"]
                     expert_action["tool_input"] = step["data"]["tool_input"]
-                    expert_action["speak"].append(step["data"]["log"])
+                    expert_action["speak"] = step["data"]["log"]
                     break
             # TODO: if expert.personality is not empty and expert_action is not empty
             if expert.personality and expert_action["valid"]:
                 # adapt the expert_action to the expert's personality
                 if expert_action["speak"]:
                     try:
-                        speak_text = ". ".join(expert_action["speak"]) + "."
-                        adapted_ = await self.adaptTextToPersonality(speak_text, expert)
+                        speak_text = expert_action["speak"]
+                        adapted_ = self.adaptTextToPersonality(speak_text, expert)
                         expert_action["speak"] = adapted_
                     except Exception as e2: 
                         print("DEBUG: adaptTextToPersonality ERROR",e2)
@@ -167,66 +175,39 @@ class Meeting:
                 "expert_role": expert.role,
                 "expert_action": expert_action
             }
-            await self.send_data(payload)
+            self.sendDataSync(payload)
             #print('DEBUG: reportAgentSteps called',json.dumps(step_object))
         except Exception as e:
             print('DEBUG: reportAgentSteps ERROR',e) 
 
-    def reportAgentStepsSync(self, step_output):
-        # Get the current running loop and create a new task
-        try:
-            loop = asyncio.get_running_loop()
-            if loop.is_running():
-                loop.create_task(self.reportAgentSteps(step_output))
-            else:
-                print("reportAgentStepsSync->EVENT LOOP IS NOT RUNNING")
-                #loop.run_until_complete(self.reportAgentSteps(step_output))
-        except Exception as e:
-            print("reportAgentStepsSync->EVENT LOOP ERROR",e)
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(self.reportAgentSteps(step_output))
-
     def sendDataSync(self, data):
         # Get the current running loop and create a new task
-        try:
-            loop = asyncio.get_running_loop()
-            if loop.is_running():
-                loop.create_task(self.send_data(data))
-            else:
-                print("sendDataSync->EVENT LOOP IS NOT RUNNING")
-                #loop.run_until_complete(self.reportAgentSteps(step_output))
-        except Exception as e:
-            print("sendDataSync->EVENT LOOP ERROR",e)
+        def createNewLoop():
             loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            #asyncio.set_event_loop(loop)
             loop.run_until_complete(self.send_data(data))
+            #asyncio.create_task(self.send_data(data))
+        try:
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(self.send_data(data))
+            #asyncio.create_task(self.send_data(data))
+
+        except Exception as e:
+            print("sendDataSync->EVENT LOOP ERROR; creating new",e)
+            createNewLoop()
 
     def create_expert(self, expert: ExpertModel):
         # create list of tools for this expert
         tools = []
         for key in expert.tools:
             tool = self.get_tool(key[0])
-            self.tool_name_map[tool.name] = key[0]
-            #print("DEBUG EXPERT TOOLS: tool",str(tool))
             if tool is not None:
+                self.tool_name_map[tool.name] = key[0]
                 tools.append(tool)
 
         # create report specific for Expert
         def reportAgentStepsSync(step_output):
-            # Get the current running loop and create a new task
-            try:
-                loop = asyncio.get_running_loop()
-                if loop.is_running():
-                    loop.create_task(self.reportAgentSteps(step_output,expert))
-                else:
-                    print("reportAgentStepsSync->EVENT LOOP IS NOT RUNNING")
-                    #loop.run_until_complete(self.reportAgentSteps(step_output))
-            except Exception as e:
-                print("reportAgentStepsSync->EVENT LOOP ERROR",e)
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                loop.run_until_complete(self.reportAgentSteps(step_output,expert))
+            self.reportAgentStepsSync2(step_output, expert)
 
         # create an expert
         temp = Agent(
@@ -248,17 +229,18 @@ class Meeting:
         def reportAgentStepsSync(step_output):
             # Get the current running loop and create a new task
             coordinator_expert = ExpertModel(role="coordinator",goal="coordinator",backstory="coordinator",collaborate=True,avatar_id="coordinator")
-            try:
-                loop = asyncio.get_running_loop()
-                if loop.is_running():
-                    loop.create_task(self.reportAgentSteps(step_output,coordinator_expert))
-                else:
-                    print("reportAgentStepsSync->EVENT LOOP IS NOT RUNNING")
+            self.reportAgentStepsSync2(step_output,coordinator_expert)
+            #try:
+            #    loop = asyncio.get_running_loop()
+            #    if loop.is_running():
+            #        loop.create_task(self.reportAgentSteps(step_output,coordinator_expert))
+            #    else:
+            #        print("reportAgentStepsSync (taskagent)->EVENT LOOP IS NOT RUNNIN; not creating")
                     #loop.run_until_complete(self.reportAgentSteps(step_output))
-            except Exception as e:
-                print("reportAgentStepsSync->EVENT LOOP ERROR",e)
-                loop = asyncio.new_event_loop()
-                loop.run_until_complete(self.reportAgentSteps(step_output,coordinator_expert))
+            #except Exception as e:
+            #    print("reportAgentStepsSync (taskagent)->EVENT LOOP ERROR; not creating",e)
+                #loop = asyncio.new_event_loop()
+                #loop.run_until_complete(self.reportAgentSteps(step_output,coordinator_expert))
 
         # creates an agent to start and coordinate the task assignment
         return Agent(
@@ -283,8 +265,105 @@ class Meeting:
             tools=[],
             step_callback=reportAgentStepsSync
         )
+    
+    def launch_task(self):
+        # build a better description for the task using the task context, name and task
+        # let frontend kwnow that the task is being created/thinked
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        self.sendDataSync({
+            "action": "createTask",
+            "data": "Improving task definition",
+        })
+        experts = self.experts
+        task = self.meta
+        # TODO: create instructor call here
+        improved = client_instructor_sync.chat.completions.create(
+            model="gpt-4",
+            response_model=ImprovedTask, 
+            messages=[
+                {"role": "system", "content": "# act as an expert prompt engineer. Consider the following JSON object as the context for writing an easier to understand task 'description' that a junior analyst can understand, and a clear 'expected_output' field that describes the expected data output from the given schema in a couple of paragraphs."},
+                {"role": "user", "content": dedent(f"""
+                    # Use the following JSON schema to understand the expected_output:
+                    ```{json.dumps(task.schema)}```
 
-    async def launch_task(self):
+                    # It's most important that you never loose focus on the task expected to be achieved by the user, which is:
+                    ```{task.task}```
+                    # using the following context:
+                    ```{task.context}```
+                """)},
+            ],
+            temperature=0.02,
+            stream=False,
+        )
+        self.sendDataSync({
+            "action": "improvedTask",
+            "data": improved.model_dump(),
+        })
+        print("Improved task", improved.model_dump())
+        # create Task Agent (Coordinator)
+        print("DEBUG: creating task agent (coordinator)")
+        coordinator = self.create_task_agent(task, improved)
+        # TODO: convert task JSON schema into Pydantic model
+        pydantic_schema = json2pydantic(task.schema)
+        print("Pydantic schema", pydantic_schema)
+        # create a task object
+        task = Task(
+            description=improved.description,
+            output_pydantic=pydantic_schema,
+            expected_output=improved.expected_output,
+            async_execution=False,
+            agent=coordinator
+        )
+        # build crew
+        def task_callback(task_output: TaskOutput):
+            # send the task output to the frontend
+            try:
+                # build payload
+                data_json = task_output.raw_output
+                try:
+                    data_json = json.loads(data_json)
+                except Exception as e:
+                    pass
+                payload = {
+                    "action": "raw_output",
+                    "agent": task_output.agent,
+                    "data": data_json
+                }
+                self.sendDataSync(payload)
+            except Exception as e:
+                print('DEBUG: task_callback ERROR',e)
+
+        crew = Crew(
+            agents=experts,
+            tasks=[task],
+            verbose=2,
+            process=Process.hierarchical,
+            manager_llm=ChatOpenAI(model="gpt-4o"),
+            memory=False, 
+            task_callback=task_callback
+        )
+        # launch the crew
+        print("Starting CREW processing ..")
+        result = crew.kickoff()
+        #result = await crew.kickoff_async()
+        result_json = result
+        try:
+            result_json = result.model_dump()
+        except Exception as e:
+            print("DEBUG: result_json ERROR",e)
+            result_json = str(result)
+        print("DEBUG: result",result_json)
+        # reply END to the frontend
+        payload = { 
+            "action": "finishedMeeting",
+            "data": result_json
+        }
+        self.sendDataSync(payload)
+        return result
+
+    async def launch_task2(self):
         # build a better description for the task using the task context, name and task
         # let frontend kwnow that the task is being created/thinked
         await self.send_data({
@@ -328,7 +407,7 @@ class Meeting:
             description=improved.description,
             output_pydantic=pydantic_schema,
             expected_output=improved.expected_output,
-            async_execution=True,
+            async_execution=False,
             agent=coordinator
         )
         # build crew
@@ -361,15 +440,15 @@ class Meeting:
         )
         # launch the crew
         print("Starting CREW processing ..")
-        result = crew.kickoff()
-        ##result = await crew.kickoff_async()
-        ##result_json = result
-        ##try:
-        ##    result_json = result.model_dump()
-        ##except Exception as e:
-        ##    print("DEBUG: result_json ERROR",e)
-        ##    result_json = str(result)
-        ##print("DEBUG: result",result_json)
+        #result = crew.kickoff()
+        result = await crew.kickoff_async()
+        result_json = result
+        try:
+            result_json = result.model_dump()
+        except Exception as e:
+            print("DEBUG: result_json ERROR",e)
+            result_json = str(result)
+        print("DEBUG: result",result_json)
         # reply END to the frontend
         ##to_frontend = { 
         ##    "action": "finishedMeeting",
@@ -390,9 +469,9 @@ class Meeting:
             #from tools.scrape_website_html_tool import ScrapeWebsiteTool
             from crewai_tools import ScrapeWebsiteTool
             return ScrapeWebsiteTool() 
-        elif tool_id == "pdf_reader":
-            from crewai_tools import PDFSearchTool
-            return PDFSearchTool() 
+        #elif tool_id == "pdf_reader":
+        #    from crewai_tools import PDFSearchTool
+        #    return PDFSearchTool()
         elif tool_id == "youtube_video_search":
             from crewai_tools import YoutubeVideoSearchTool
             return YoutubeVideoSearchTool() 

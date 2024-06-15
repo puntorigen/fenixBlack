@@ -83,7 +83,7 @@ function App() {
       <div>
       <button onClick={async()=>{
         //await privacyPolicy.current.start('Create a review for propertyradar.com',privacyPolicy);
-        await meetingBrand.current.start('Create brand guidelines for propertyradar.com',brandSchema);
+        await meetingBrand.current.start('Create brand guidelines for www.enecon.com',brandSchema);
         //meetingBrand.current.play();
       }}>Start Meeting</button>
         </div>

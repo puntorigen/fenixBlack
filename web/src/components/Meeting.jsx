@@ -114,7 +114,7 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMa
                     // @TODO: move these conditions into the backend
                     let play = {
                         valid: false,
-                        sentences: [],
+                        sentences: '',
                         expert_id: null,
                         tool_id: null,
                         kind: null
@@ -125,12 +125,11 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMa
                         play.expert_id = obj.expert_action.expert_id;
                         play.tool_id = obj.expert_action.tool_id;
                         play.kind = obj.expert_action.kind;
-                        play.sentences = obj.expert_action.speak;
-                        if (Array.isArray(play.sentences)) {
-                            play.sentences = splitSentences(play.sentences);
-                        } else {
+                        play.sentences = obj.expert_action.speak.trim();
+                        // trim sentences                        
+                        if (play.sentences==='') {
+                            play.valid = false;
                             console.log('DEBUG: No sentences to speak, skipping obj.',obj);
-                            play.valid = false; 
                         }
                     }
                     /*
@@ -167,12 +166,12 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMa
                     */ 
                     // only play animation if 'play.valid' is true
                     if (play.valid === true) {
-                        console.log('DEBUG: TOOL DETECTED:',play,obj);
+                        console.log('DEBUG: TOOL DETECTED:',play,obj,refs.current[play.expert_id]);
                         if (refs.current[play.expert_id]) {
                             await refs.current[play.expert_id].play(play.tool_id);
                             await refs.current[play.expert_id].speak(play.sentences,400,150,300,async function() {
                                 console.log('meeting->agent speaking done');
-                                await refs.current[play.expert_id].avatarSize('100%');
+                                refs.current[play.expert_id].avatarSize('100%');
                                 await refs.current[play.expert_id].stop();
                             });
                         }

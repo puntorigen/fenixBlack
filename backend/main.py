@@ -15,6 +15,7 @@ from utils.LLMs import get_llm, get_max_num_iterations
 #from db.models import Comment, Scanned
 
 from urllib.parse import urlparse
+import asyncio
 
 # Configure logging
 #logging.basicConfig(level=logging.INFO)
@@ -64,7 +65,8 @@ async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
                     meeting_id=meeting_id,
                     meta=from_frontend["meta"]
                 )
-                await current_meeting.launch_task()
+                return await asyncio.to_thread(current_meeting.launch_task)
+                #await current_meeting.launch_task()
                 #break
             else:
                 print("Unknown payload cmd received from frontend.", from_frontend)

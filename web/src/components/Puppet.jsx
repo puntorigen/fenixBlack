@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle, Su
 import NiceAvatar from '@nice-avatar-svg/react';
 import lottie from 'lottie-web';
 import { replaceColor, flatten } from 'lottie-colorify';
-import { useSpeech } from "react-text-to-speech";
 
 const Puppet = forwardRef(({
     bgColor="#6BD9E9", 
@@ -39,7 +38,7 @@ const Puppet = forwardRef(({
     const speakIntervalRef = useRef(null);
     const lastSizeRef = useRef(1);
 
-    const SpeechCommands = useSpeech({ text, pitch: 1, rate: 1, volume: 1, lang: "en-US", voiceURI: "Aaron", highlightText: true });
+    //const SpeechCommands = useSpeech({ text, pitch: 1, rate: 1, volume: 1, lang: "en-US", voiceURI: "Aaron", highlightText: true });
     
     // Calculate scale and apply horizontal flip if needed
     const scale = Math.min(parseFloat(width) / 380, parseFloat(height) / 380);
@@ -61,13 +60,11 @@ const Puppet = forwardRef(({
             setText(" ");
             speakIntervalRef.current = null;
         }
-        try {
-            if (SpeechCommands.speechStatus === "started") SpeechCommands.stop();
-        } catch (error) {}
     };
 
     const speak = async(inputText, speed = speakSpeed, pause = 150, delayErase = 300, onEnd) => {
         clearSpeakInterval(); // Clear any existing interval to prevent overlap
+        const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         if (typeof inputText !== 'string' && Array.isArray(inputText)) {
             // for every item in inputText, call speak recursively waiting for the previous to finish
             const [first, ...rest] = inputText;
@@ -79,8 +76,7 @@ const Puppet = forwardRef(({
         } else {        
             const words = inputText.split(" ");
             let index = 0;
-            if (SpeechCommands.speechStatus === "started") SpeechCommands.stop();
-            if (SpeechCommands.speechStatus === "stopped" || SpeechCommands.speechStatus === "paused") SpeechCommands.start();
+
             speakIntervalRef.current = setInterval(async() => {
                 if (index < words.length) {
                     setText(words.slice(0, index + 1).join(" "));
@@ -88,15 +84,17 @@ const Puppet = forwardRef(({
                     index++;
                 } else {
                     clearSpeakInterval();
-                    setTimeout(async() => {
+                    if (pause+delayErase<speed) {
+                        await sleep(pause);
                         setMouthStyle('smile');
-                        setTimeout(async() => {
-                            setText("");
-                            console.log('puppet->speak->calling onEnd')
-                            onEnd && await onEnd();  // Call the callback function if provided
-                            onSpeakEnd && onSpeakEnd();  // Call the callback prop if provided
-                        }, delayErase);
-                    }, pause);
+                        await sleep(delayErase);
+                    } else {
+                        setMouthStyle('smile');
+                    } 
+                    setText("");
+                    console.log('puppet->speak->calling onEnd')
+                    onEnd && await onEnd();  // Call the callback function if provided
+                    onSpeakEnd && onSpeakEnd();  // Call the callback prop if provided
                 }
             }, speed);
         }
@@ -220,7 +218,7 @@ const Puppet = forwardRef(({
                     padding: '5px 5px 10px 5px',
                     maxWidth: width,
                     maxHeight: height,
-                    overflow: 'hidden',
+                    overflow: 'clip',
                     fontFamily: 'Arial, sans-serif',
                     fontSize: `${scale * 20}px`,  // Dynamically adjust font size based on scale
                     zIndex: 1,
