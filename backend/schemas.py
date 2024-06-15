@@ -17,12 +17,15 @@ class AvatarDetails(BaseModel):
     blinkSpeed: Optional[int] = Field(None, description="Speed at which the avatar blinks")
 
 class Tools(BaseModel):
-    search: Dict[str, str] = Field(..., description="Tool for searching information with a description of the activity")
-    scrape: Dict[str, str] = Field(..., description="Tool for scraping data with a description of the activity")
+    search: Optional[Dict[str, str]] = Field(None, description="Tool for searching information with a description of the activity")
+    scrape: Optional[Dict[str, str]] = Field(None, description="Tool for scraping data with a description of the activity")
+    website_search: Optional[Dict[str, str]] = Field(None, description="Tool for querying a given website")
+    pdf_reader: Optional[Dict[str, str]] = Field(None, description="Tool for reading PDF file contents")
+    youtube_video_search: Optional[Dict[str, str]] = Field(None, description="Tool for querying the contents of a youtube video")
 
 class ExpertModel(BaseModel):
     type: Optional[str] = Field(None, description="Type of the object, e.g., 'expert'")
-    name: Optional[str] = Field(..., description="Name of the expert")
+    name: Optional[str] = Field(None, description="Name of the expert")
     age: Optional[int] = Field(None, description="Age of the expert")
     role: str = Field(..., description="Role of the expert, e.g., 'Designer'")
     goal: str = Field(..., description="Goal or objective of the expert")
@@ -41,5 +44,6 @@ class TaskContext(BaseModel):
 
 class ImprovedTask(BaseModel):
     description: str = Field(..., description="An easier to understand description for the task to perform")
+    description_first_person: str = Field(..., description="An easier to understand first person description for the task to perform, in present tense and active voice under the 'I' pronoun, using less than 140 characters")
     expected_output: str = Field(..., description="A description of the expected output for the task")
     coordinator_backstory: str = Field(..., description="A backstory description for a coordinator LLM agent specific for delegating this task")

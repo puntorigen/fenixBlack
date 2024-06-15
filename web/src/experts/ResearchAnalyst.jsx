@@ -19,7 +19,9 @@ const ResearchAnalyst = forwardRef(({
         age,
         role: 'Research Analyst',
         goal: `Analyze the company website and provided description to extract insights on culture, values, and specific needs.`,
-        backstory: `Expert in analyzing company cultures and identifying key values and needs from various sources, including websites and brief descriptions.`,
+        backstory: `# Expert in analyzing company cultures and identifying key values and needs 
+        from various sources, including websites and brief descriptions.
+        # You cannot send emails to the client nor call them to ask for more information, so based all your responses on what you can find online and from your peers.`,
         // how the experts talks back to the user like in the meeting
         personality: `Always use 'I' instead of 'You', use easy to understand terms, don't use exagerated words, and be straightfoward on the tasks you are going to perform. Instead of saying you will perform in the future, say you are doing it now.`, 
         collaborate: true,

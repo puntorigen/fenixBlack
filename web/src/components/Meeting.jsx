@@ -106,7 +106,7 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMa
                     console.log('Received data:', obj);
                     if (refs.current['field-0']) {
                         // split the description into an array 
-                        const sentences = splitSentences(obj.data.description);
+                        const sentences = splitSentences(obj.data.description_first_person);
                         //console.log('sentences',sentences);
                         await refs.current['field-0'].speak(sentences);
                     }
@@ -119,6 +119,21 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMa
                         tool_id: null,
                         kind: null
                     };
+                    // new version
+                    if (obj.expert_action && obj.expert_action.valid === true) {
+                        play.valid = true;
+                        play.expert_id = obj.expert_action.expert_id;
+                        play.tool_id = obj.expert_action.tool_id;
+                        play.kind = obj.expert_action.kind;
+                        play.sentences = obj.expert_action.speak;
+                        if (Array.isArray(play.sentences)) {
+                            play.sentences = splitSentences(play.sentences);
+                        } else {
+                            console.log('DEBUG: No sentences to speak, skipping obj.',obj);
+                            play.valid = false; 
+                        }
+                    }
+                    /*
                     // iterate over obj.data array
                     for (const key in obj.data) {
                         if (obj.data[key].type === 'tool') {
@@ -149,19 +164,17 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMa
                             }
                         }
                     }
+                    */ 
                     // only play animation if 'play.valid' is true
-                    if (play.kind === 'tool' && play.valid) {
-                        console.log('DEBUG: TOOL DETECTED:',play);
-                    } else {
-                        console.log('DEBUG: TOOL NOT DETECTED: raw_obj',obj);
-                    }
                     if (play.valid === true) {
+                        console.log('DEBUG: TOOL DETECTED:',play,obj);
                         if (refs.current[play.expert_id]) {
                             await refs.current[play.expert_id].play(play.tool_id);
-                            await refs.current[play.expert_id].speak(play.sentences,400,150,300,async()=>{
+                            await refs.current[play.expert_id].speak(play.sentences,400,150,300,async function() {
+                                console.log('meeting->agent speaking done');
                                 await refs.current[play.expert_id].avatarSize('100%');
                                 await refs.current[play.expert_id].stop();
-                            }); 
+                            });
                         }
                     }
 
@@ -173,7 +186,7 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMa
                         if (refs.current[expert_id].stop) {
                             await refs.current[expert_id].avatarSize('100%');
                             await refs.current[expert_id].stop();
-                        }
+                        } 
                     }
                     //
                     if (refs.current['field-0']) {

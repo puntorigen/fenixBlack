@@ -39,6 +39,31 @@ class Meeting:
         except Exception as e:
             print("DEBUG: send_data ERROR",e)
 
+    async def adaptTextToPersonality(self, text: str, expert: ExpertModel):
+        from typing import Dict, Optional
+        from pydantic import BaseModel, Field
+        class AdaptedStyle(BaseModel):
+            new_text: str = Field(None, description="New text adapted to the given personality using a maximum of 140 characters.")
+        
+        adaptText = await client_instructor.chat.completions.create(
+            model="gpt-4o",
+            response_model=AdaptedStyle,
+            messages=[
+                {"role": "system", "content": "# act as an excellent writer, expert in adapting text to a specific given personality and style. Always consider writing in the first person and using a maximum of 140 characters, in present tense."},
+                {"role": "user", "content": dedent(f"""
+                    # Consider the following personality instruction for adapting the text:
+                    ```{expert.personality}```
+
+                    # adapt the following text to the given personality: 
+                    ```{text}```
+                """)},
+            ],
+            temperature=0.2,
+            stream=False,
+        )
+        print("Adapted TEXT FOR PERSONALITY: ", adaptText.model_dump())
+        return adaptText.new_text
+
     async def reportAgentSteps(self, step_output, expert: ExpertModel):
         # send the step output to the frontend
         try:
@@ -102,7 +127,7 @@ class Meeting:
                     step_object.append({ "type":"step", "data":str(step) })
 
             # prepare/init the 'expert' ready to use 'expert_action' object
-            expert_action = {}
+            expert_action = {} 
             expert_action["valid"] = False
             expert_action["kind"] = ""
             expert_action["speak"] = []
@@ -112,11 +137,27 @@ class Meeting:
             for step in step_object:
                 if step["type"] == "tool" and step["data"]["error"] == False:
                     expert_action["kind"] = "tool"
+                    expert_action["valid"] = True
                     expert_action["tool_id"] = step["data"]["tool_id"]
                     expert_action["tool_input"] = step["data"]["tool_input"]
                     expert_action["speak"].append(step["data"]["log"])
                     break
             # TODO: if expert.personality is not empty and expert_action is not empty
+            if expert.personality and expert_action["valid"]:
+                # adapt the expert_action to the expert's personality
+                if expert_action["speak"]:
+                    try:
+                        speak_text = ". ".join(expert_action["speak"]) + "."
+                        adapted_ = await self.adaptTextToPersonality(speak_text, expert)
+                        expert_action["speak"] = adapted_
+                    except Exception as e2: 
+                        print("DEBUG: adaptTextToPersonality ERROR",e2)
+                        expert_action["speak"] = ". ".join(expert_action["speak"]) + "." # convert list to string
+                else:
+                    expert_action["speak"] = "" # convert list to string
+            #else:
+            #    expert_action["speak"] = ". ".join(expert_action["speak"]) + "." # convert list to string
+            #expert_action["speak"] = ". ".join(expert_action["speak"]) + "." # convert list to string
             # TODO: create & call adaptExpertSpeak function to adapt the expert_action spoken & shown text
             # build payload
             payload = {
@@ -129,7 +170,7 @@ class Meeting:
             await self.send_data(payload)
             #print('DEBUG: reportAgentSteps called',json.dumps(step_object))
         except Exception as e:
-            print('DEBUG: reportAgentSteps ERROR',e)
+            print('DEBUG: reportAgentSteps ERROR',e) 
 
     def reportAgentStepsSync(self, step_output):
         # Get the current running loop and create a new task
@@ -206,7 +247,7 @@ class Meeting:
         # create report specific for Expert
         def reportAgentStepsSync(step_output):
             # Get the current running loop and create a new task
-            coordinator_expert = ExpertModel(role="coordinator",goal="coordinator",backstory="coordinator",personality="",avatar_id="coordinator")
+            coordinator_expert = ExpertModel(role="coordinator",goal="coordinator",backstory="coordinator",collaborate=True,avatar_id="coordinator")
             try:
                 loop = asyncio.get_running_loop()
                 if loop.is_running():
@@ -238,7 +279,7 @@ class Meeting:
             allow_delegation=True,
             verbose=True,
             max_iter=get_max_num_iterations(10),
-            llm=get_llm(),
+            llm=get_llm("gpt-4-0125-preview"),
             tools=[],
             step_callback=reportAgentStepsSync
         )
@@ -255,7 +296,7 @@ class Meeting:
         # TODO: create instructor call here
         improved = await client_instructor.chat.completions.create(
             model="gpt-4",
-            response_model=ImprovedTask,
+            response_model=ImprovedTask, 
             messages=[
                 {"role": "system", "content": "# act as an expert prompt engineer. Consider the following JSON object as the context for writing an easier to understand task 'description' that a junior analyst can understand, and a clear 'expected_output' field that describes the expected data output from the given schema in a couple of paragraphs."},
                 {"role": "user", "content": dedent(f"""
@@ -287,7 +328,7 @@ class Meeting:
             description=improved.description,
             output_pydantic=pydantic_schema,
             expected_output=improved.expected_output,
-            async_execution=False,
+            async_execution=True,
             agent=coordinator
         )
         # build crew
@@ -312,30 +353,30 @@ class Meeting:
         crew = Crew(
             agents=experts,
             tasks=[task],
-            verbose=1,
+            verbose=2,
             process=Process.hierarchical,
-            manager_llm=ChatOpenAI(model="gpt-4"),
+            manager_llm=ChatOpenAI(model="gpt-4o"),
             memory=False, 
-            #task_callback=task_callback
+            task_callback=task_callback
         )
         # launch the crew
         print("Starting CREW processing ..")
-        #result = crew.kickoff()
-        result = await crew.kickoff_async()
-        result_json = result
-        try:
-            result_json = result.model_dump()
-        except Exception as e:
-            print("DEBUG: result_json ERROR",e)
-            result_json = str(result)
-        print("DEBUG: result",result_json)
+        result = crew.kickoff()
+        ##result = await crew.kickoff_async()
+        ##result_json = result
+        ##try:
+        ##    result_json = result.model_dump()
+        ##except Exception as e:
+        ##    print("DEBUG: result_json ERROR",e)
+        ##    result_json = str(result)
+        ##print("DEBUG: result",result_json)
         # reply END to the frontend
-        to_frontend = { 
-            "action": "finishedMeeting",
-            "data": result_json
-        }
-        await self.send_data(to_frontend)
-        return result
+        ##to_frontend = { 
+        ##    "action": "finishedMeeting",
+        ##    "data": result_json
+        ##}
+        ##await self.send_data(to_frontend)
+        ##return result
 
     def get_tool(self, tool_id):
         # get the tool object given the tool_id

@@ -10,6 +10,8 @@ const AccountManager = forwardRef(({
     task="", // specific task for this agent instance
     style,
     onAnimationEnd,
+    width="300px",
+    height="300px",
 }, ref) => {
     const expertRef = useRef(); 
 
@@ -18,8 +20,10 @@ const AccountManager = forwardRef(({
         name,
         age,
         role: 'Account Manager',
-        goal: `Manage client accounts and ensure customer satisfaction.`,
-        backstory: `Experienced in leading customer success teams within tech industries, adept at solving complex client issues.`,
+        goal: `Understand the user's requirements and context, search industry updates online and explain your findings to your team members in an easy to understand format.`,
+        backstory: `# Experienced in leading customer success teams within tech 
+        industries, you are adept at solving complex client requirements as simple tasks.
+        # You cannot send emails to the client nor call them to ask for more information, so based all your responses on what you can find online and from your peers.`,
         // how the experts talks back to the user like in the meeting
         personality: `Always use 'I' instead of 'You', use easy to understand terms, don't use exagerated words, and be straightfoward on the tasks you are going to perform. Instead of saying you will perform in the future, say you are doing it now.`, 
         collaborate: true,
@@ -67,6 +71,8 @@ const AccountManager = forwardRef(({
             id={id}
             meta={meta}
             name={name}
+            width={width}
+            height={height}
             bgColor={meta.avatar.bgColor}
             hairColor={meta.avatar.hairColor}
             shirtColor={meta.avatar.shirtColor}

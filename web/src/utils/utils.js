@@ -23,7 +23,7 @@ export function splitSentences(description) {
         currentSentence += char;
 
         // Check if entering a URL
-        if (!inURL && description.substring(i, i + 7).match(/https?:\/\//)) {
+        if (!inURL && description.length>(i+7) && description.substring(i, i + 7).match(/https?:\/\//)) {
             inURL = true;
         }
 

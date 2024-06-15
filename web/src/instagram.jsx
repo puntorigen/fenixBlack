@@ -7,9 +7,9 @@ import { tools } from './experts/constants';
 import Meeting from './components/Meeting';
 import AccountManager from './experts/AccountManager';
 import Designer from './experts/Designer';
+import LeadMarketAnalyst from './experts/Marketing/LeadMarketAnalyst';
 import Lawyer from './experts/Lawyer';
 import ResearchAnalyst from './experts/ResearchAnalyst';
-import LeadMarketAnalyst from './experts/Marketing/LeadMarketAnalyst';
 
 function App() {
   const meetingBrand = useRef(null);
@@ -60,7 +60,7 @@ function App() {
           }}>
           <AccountManager name="Mauricio1" />
           <Designer />
-          <Lawyer study={ //learns the given data if needed
+          <Lawyer resources={ //learns the given data if needed
             ['https://ico.org.uk/media/for-organisations/guide-to-the-general-data-protection-regulation-gdpr-1-0.pdf']
           } />
         </Meeting>
@@ -69,15 +69,14 @@ function App() {
         <Meeting 
           name="brandBuilder" 
           ref={meetingBrand} 
-          task="research what does the company do, their colors, fonts, and build a design brand guideline report" 
+          task="research what does the company do, their colors, fonts, their products and prices, and build a design brand guideline report" 
           outputKey="brand"
           onFinish={(output)=>{
             console.log('meeting onFinish called',output);
-          }}> 
+          }}>
           <AccountManager name="Mauricio" />
           <ResearchAnalyst />
           <Designer />
-          <LeadMarketAnalyst />
         </Meeting>
       </div>
       <div>
@@ -85,7 +84,7 @@ function App() {
         //await privacyPolicy.current.start('Create a review for propertyradar.com',privacyPolicy);
         await meetingBrand.current.start('Create brand guidelines for propertyradar.com',brandSchema);
         //meetingBrand.current.play();
-      }}>Start Meeting</button>
+      }}>Start Instagram Meeting</button>
         </div>
     </div>
   );
