@@ -350,12 +350,12 @@ class Meeting:
             agents=experts,
             tasks=[task],
             verbose=False,
-            process=Process.sequential,
+            process=Process.hierarchical,
             manager_llm=ChatOpenAI(model="gpt-4", temperature=0.0),
             memory=False,  
             task_callback=task_callback,
             full_output=True
-        ) 
+        )
         # launch the crew
         print("Starting CREW processing ..")
         try:

@@ -14,15 +14,30 @@ const useRefs = () => {
     return [ refs, register ];
 };
 
-const Meeting = forwardRef(({ name, task, outputKey, children, onFinish, onError }, refMain) => {
+const Meeting = forwardRef(({ name, task, outputKey, children, onFinish, onError, onDialog }, refMain) => {
     const [refs, register] = useRefs();
     const [experts, setExperts] = useState({});
     const websocketRef = useRef(null);
     const windowSize = useWindowSize();
     const [inProgress, setInProgress] = useState(false);
+    const [transcript, setTranscript] = useState([]);
+    const addTranscript = (speaker,message,type='thought',role='coordinator') => {
+        let obj = { speaker, role, type, message };
+        obj.time = new Date().toLocaleTimeString();
+        if (type === 'thought') {
+            obj.full = `${obj.time} [${obj.role}] ${obj.speaker}: (THINKS: ${obj.message})`;
+        } else if (type === 'intro') {
+            obj.full = `${obj.time} [INTRO]: ${obj.message}`;
+        } else {
+            obj.full = `${obj.time} [${obj.role}] ${obj.speaker}: ${obj.message}`;
+        }
+        setTranscript(prev => [...prev, obj]);
+    };
 
     useEffect(() => {
         // Log meta information from children
+        setTranscript([]);
+        addTranscript('Fenix',`Hi my name is Fenix and I'm the Meeting Coordinator. My goal is to 'help the team coordinate tasks between team members and query customer data'.`,'intro','Meeting Coordinator');
         const parseChildren = () => {
             Object.keys(refs.current).forEach(refName => {
                 if (refs.current[refName] && refs.current[refName].meta) {
@@ -33,6 +48,7 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish, onError
                         setExperts(prev => {
                             return { ...prev, [meta.name+'|'+meta.role]: meta };
                         })
+                        addTranscript(meta.name,`Hi my name is ${meta.name} and I'm the ${meta.role} in this meeting. My goal is to help in '${meta.goal}'.`,'intro',meta.role);
                     }
                 }
             });
@@ -97,10 +113,15 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish, onError
             }
         } 
     }, [experts, windowSize.width]);
- 
+
+    useEffect(() => {
+        // emit the transcript to the parent
+        onDialog && onDialog(transcript);
+    },[transcript])
 
     // Expose Meeting's methods to parent through ref
     useImperativeHandle(refMain, () => ({
+        getTranscript: () => transcript,    // for parent to get the transcript
         start: async(context,schema)=>{
             // start meeting with given context, and zod output schema
             // 1. build a JSON of the meeting info + children JSON info + zod schema JSON
@@ -114,6 +135,7 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish, onError
                     },
                     experts
                 };
+                addTranscript('Fenix',`The user has given us the following task: '${payload.meta.task}'`,'says','Meeting Coordinator');
                 //console.log('payload',payload);
                 // send to backend
                 if (websocketRef.current && websocketRef.current.readyState === WebSocket.OPEN) {
@@ -136,17 +158,20 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish, onError
                     console.log('Received keepalive event.');
                 } else if (obj?.action === 'server_status') {
                 } else if (obj?.action === 'createTask') {
-                    setInProgress(true);
                     // dummy, update an avatar with the data (just testing)
                     console.log('Received data:', obj);
                     if (refs.current['field-1']) {
                         await refs.current['field-1'].speak(obj.data);
                     }
                 } else if (obj?.action === 'improvedTask') {
-                    // dummy, update an avatar with the data (just testing) 
+                    // gets the improved version of the user task that's going to be used
+                    setInProgress(true);
+                    addTranscript('Fenix',`After some reflexion I believe a better description for the task we should perform is: '${obj.data.description}'. The expected output for our meeting is '${obj.data.expected_output}'.`,'thought','Meeting Coordinator');
                     console.log('Received data:', obj);
                     if (refs.current['field-0']) {
-                        // split the description into an array 
+                        // split the description into an array
+                        const meta1 = refs.current['field-0'].meta(); 
+                        addTranscript(meta1.name,obj.data.description_first_person,'says',meta1.role);
                         const sentences = splitSentences(obj.data.description_first_person);
                         //console.log('sentences',sentences);
                         await refs.current['field-0'].speak(sentences);
@@ -161,8 +186,8 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish, onError
                         kind: null
                     };
                     // new version
-                    if (obj.expert_action && obj.expert_action.valid === true) {
-                        play.valid = true;
+                    if (obj.expert_action) {
+                        play.valid = obj.expert_action.valid;
                         play.expert_id = obj.expert_action.expert_id;
                         play.tool_id = obj.expert_action.tool_id;
                         play.kind = obj.expert_action.kind;
@@ -178,11 +203,36 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish, onError
                                 refs.current[play.expert_id].avatarSize('100%');
                                 await refs.current[play.expert_id].stop();
                             });
+                            const meta_expert = refs.current[play.expert_id].meta();
+                            addTranscript(meta_expert.name,play.sentences,'says',meta_expert.role);
                         }
                     } else if (play.kind === 'tool') {
                         //console.log('TOOL NOT USED');
                     } else {
                         console.log('DEBUG: THOUGHT OBJECT:',obj);
+                        let meta_expert = {};
+                        if (play.expert_id === 'coordinator') {
+                            meta_expert = {
+                                name: 'Fenix',
+                                role: 'Meeting Coordinator',
+                            };
+                        } else if (refs.current[play.expert_id]) {
+                            meta_expert = refs.current[play.expert_id].meta();
+                        }
+                        for (const step_ of obj.data) {
+                            if (step_.type === 'response_str') {
+                                let data__ = step_.data;
+                                try {
+                                    // try parsing it as json
+                                    data__ = dJSON.parse(step_.data);
+                                    if (data__.output) {
+                                        addTranscript(meta_expert.name,data__.output,'thought',meta_expert.role);
+                                    }
+                                } catch(e) {
+                                    addTranscript(meta_expert.name,data__,'thought',meta_expert.role);
+                                }
+                            }
+                        }
                     }
 
                 } else if (obj?.action === 'finishedMeeting') {
@@ -197,16 +247,19 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish, onError
                     }
                     //
                     if (refs.current['field-0']) {
+                        const meta_expert = refs.current['field-0'].meta();
+                        addTranscript(meta_expert.name,'The meeting has ended, thank you everyone.','says',meta_expert.role);
+                        addTranscript(meta_expert.name,'This is the result of our meeting: '+obj.data,'says',meta_expert.role);
                         refs.current['field-0'].speak("The meeting was completed, check the console output for the data.");
                     }
                     let zod_schema = {};  
                     try {
                         zod_schema = schema.parse(obj.data);
-                        console.log('Schema enforced result:', zod_schema);
+                        //console.log('Schema enforced result:', zod_schema);
                     } catch(e) {
                         try {
                             zod_schema = dJSON.parse(obj.data);
-                            console.log('Schema enforced2 result:', zod_schema);
+                            //console.log('Schema enforced2 result:', zod_schema);
                         } catch(e2) { 
                             zod_schema = obj.data;
                             console.error('Schema enforcement failed:', e);
@@ -220,7 +273,7 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish, onError
                         console.log('Meeting ended and socket closed.');
                     }
                     // 5. call onFinish callback with the zod schema enforced data
-                    onFinish && onFinish(zod_schema);
+                    onFinish && onFinish({ data:zod_schema, metrics:obj.metrics });
                 } else {
                     console.log('(unhandled) Received data:', obj);
                 }

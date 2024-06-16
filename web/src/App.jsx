@@ -16,6 +16,7 @@ function App() {
   const meetingPrivacy = useRef(null);
   const [testTask, setTestTask] = useState('Create brand guidelines for www.enecon.com');
   const [inMeeting, setInMeeting] = useState(false);
+  const [dialog, setDialog] = useState([]);
   return (
       /* 
       <header className="App-header">
@@ -91,6 +92,7 @@ function App() {
           ref={meetingBrand} 
           task="research what does the company do, their hex colors, used fonts faces, and build a complete design brand guideline report" 
           outputKey="brand"
+          onDialog={(dialog)=>setDialog(dialog)}
           onError={(error)=>{
             console.log('meeting finished due to an error',error);
             setInMeeting(false);
@@ -102,8 +104,14 @@ function App() {
           <AccountManager name="Mauricio" />
           <ResearchAnalyst />
           <Designer />
-          <LeadMarketAnalyst />
+          <LeadMarketAnalyst name="Julio" />
         </Meeting>
+        <WiredCard elevation={2} style={{marginBottom:100, color:'white', textAlign:'left', width:'80%' }}>
+        <h2>Meeting Transcription</h2>
+        <span style={{ fontFamily:'sans-serif' }}>
+          {dialog && dialog.map((d,i)=><p key={i}>{d.full}</p>)}
+        </span>
+        </WiredCard>
       </div>
   );
 }
