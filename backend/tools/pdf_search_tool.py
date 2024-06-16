@@ -10,6 +10,7 @@ from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 
+search = None
 
 class FixedPDFSearchToolSchema(BaseModel):
     """Input for PDFSearchTool."""
@@ -29,23 +30,27 @@ class PDFSearchTool(BaseTool):
     name: str = "Search a PDF's content"
     description: str = "A tool that can be used to semantic search a query from a PDF's content."
     args_schema: Type[BaseModel] = PDFSearchToolSchema
+    pdf: Optional[str] = None
+    query: Optional[str] = None
 
     def __init__(self, pdf: Optional[str] = None, **kwargs):
         super().__init__(**kwargs)
         if pdf is not None:
             self.add(pdf)
+            self.name = "Search a PDF's content"
             self.description = f"A tool that can be used to semantic search a query the {pdf} PDF's content."
             self.args_schema = FixedPDFSearchToolSchema
-            self._generate_description()
+            self._generate_description() 
 
     def add(
         self,
         *args: Any,
         **kwargs: Any,
     ) -> None:
-        self.loader = PyMuPDFLoader(*args, **kwargs)
-        self.pages = self.loader.load()
-        self.search = FAISS.from_documents(self.pages, OpenAIEmbeddings())
+        global search
+        loader = PyMuPDFLoader(*args) #, **kwargs
+        pages = loader.load()
+        search = FAISS.from_documents(pages, OpenAIEmbeddings())
 
     def _before_run(
         self,
@@ -58,8 +63,9 @@ class PDFSearchTool(BaseTool):
 		self,
 		**kwargs: Any,
     ) -> Any:
+        global search
         query = kwargs.get('query')
-        docs = self.search.similarity_search(query, k=2)
+        docs = search.similarity_search(query, k=2)
         extract = []
         for doc in docs: 
             extract.append(str(doc.metadata["page"]) + ":", doc.page_content[:300])

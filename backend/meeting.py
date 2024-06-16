@@ -228,8 +228,8 @@ class Meeting:
             verbose=True,
             memory=False,
             allow_delegation=expert.collaborate,
-            max_iter=get_max_num_iterations(7),
-            llm=get_llm(openai="gpt-4o", temperature=0),
+            max_iter=get_max_num_iterations(10),
+            llm=get_llm(openai="gpt-4", temperature=0.1),
             tools=tools,
             step_callback=reportAgentStepsSync
         )
@@ -351,7 +351,7 @@ class Meeting:
             tasks=[task],
             verbose=False,
             process=Process.hierarchical,
-            manager_llm=ChatOpenAI(model="gpt-4"),
+            manager_llm=ChatOpenAI(model="gpt-4", temperature=0.1),
             memory=False,  
             task_callback=task_callback,
             full_output=True
@@ -366,7 +366,7 @@ class Meeting:
         # reply END to the frontend
         payload = { 
             "action": "finishedMeeting",
-            "data": result_json,
+            "data": result_json.json(),
             "metrics": metrics,
             #"tasks": result["tasks_outputs"].dict(),
         } 
