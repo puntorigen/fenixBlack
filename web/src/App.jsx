@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import './App.css';
 import { WiredCard, WiredButton, WiredInput } from 'react-wired-elements';
 import { brandSchema, brochureSchema, privacyPolicy } from './schemas';
@@ -14,9 +14,10 @@ import LeadMarketAnalyst from './experts/Marketing/LeadMarketAnalyst';
 function App() {
   const meetingBrand = useRef(null);
   const meetingPrivacy = useRef(null);
+  const [testTask, setTestTask] = useState('Create brand guidelines for www.enecon.com');
+  const [inMeeting, setInMeeting] = useState(false);
   return (
-    <div className="App">
-      {/* 
+      /* 
       <header className="App-header">
         AI Multi Expert System<br/><br/>
       </header>
@@ -47,9 +48,8 @@ function App() {
         </Meeting>
         <BrochurePDF name="brochurePDF" ref={brochurePDF} output="" /> // this takes the result from the previous step as input, and creates the PDF file as base64
       </Factory>
-      */}
+
       <div>
-        {/*
         <Meeting 
           name="privacyPolicy" 
           ref={meetingPrivacy} 
@@ -63,16 +63,41 @@ function App() {
           <Lawyer study={ //learns the given data if needed
             ['https://ico.org.uk/media/for-organisations/guide-to-the-general-data-protection-regulation-gdpr-1-0.pdf']
           } />
-        </Meeting>
-        */}
+        </Meeting> 
+        </div>
+        */
+        <div className="App">
+          <div className='App-header'>
+            <h1 style={{ color:'yellowgreen' }}>AI Multi Expert System</h1>
+          </div>
+        <WiredInput 
+          placeholder="Test Task" 
+          value={testTask}
+          style={{width:'50%'}} 
+          onChange={(e)=>setTestTask(e.target.value)} />
+        <WiredButton 
+          style={{marginTop:20, color:'yellowgreen' }}
+          disabled={inMeeting}
+          onClick={async()=>{
+            //await privacyPolicy.current.start('Create a review for propertyradar.com',privacyPolicy);
+            setInMeeting(true);
+            await meetingBrand.current.start(testTask,brandSchema);
+            //meetingBrand.current.play();
+          }}
+        >Start Meeting</WiredButton>
 
         <Meeting 
           name="brandBuilder" 
           ref={meetingBrand} 
-          task="research what does the company do, their colors, fonts, and build a design brand guideline report" 
+          task="research what does the company do, their hex colors, used fonts faces, and build a complete design brand guideline report" 
           outputKey="brand"
+          onError={(error)=>{
+            console.log('meeting finished due to an error',error);
+            setInMeeting(false);
+          }} 
           onFinish={(output)=>{
             console.log('meeting onFinish called',output);
+            setInMeeting(false);
           }}> 
           <AccountManager name="Mauricio" />
           <ResearchAnalyst />
@@ -80,14 +105,6 @@ function App() {
           <LeadMarketAnalyst />
         </Meeting>
       </div>
-      <div>
-      <button onClick={async()=>{
-        //await privacyPolicy.current.start('Create a review for propertyradar.com',privacyPolicy);
-        await meetingBrand.current.start('Create brand guidelines for www.enecon.com',brandSchema);
-        //meetingBrand.current.play();
-      }}>Start Meeting</button>
-        </div>
-    </div>
   );
 }
 

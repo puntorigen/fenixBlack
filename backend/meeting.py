@@ -350,23 +350,37 @@ class Meeting:
             agents=experts,
             tasks=[task],
             verbose=False,
-            process=Process.hierarchical,
-            manager_llm=ChatOpenAI(model="gpt-4", temperature=0.1),
+            process=Process.sequential,
+            manager_llm=ChatOpenAI(model="gpt-4", temperature=0.0),
             memory=False,  
             task_callback=task_callback,
             full_output=True
         ) 
         # launch the crew
         print("Starting CREW processing ..")
-        result = crew.kickoff()
+        try:
+            result = crew.kickoff() 
+        except Exception as e:
+            print("DEBUG: crew.kickoff ERROR (maybe without balance?)",e)
+            payload = { 
+                "action": "error",
+                "type": "crew_kickoff",
+                "data": str(e)
+            }
+            self.sendDataSync(payload) 
+            return self 
         #result = await crew.kickoff_async()
         result_json:MyBaseModel = result["final_output"]
         metrics:dict = result["usage_metrics"]
         print("DEBUG: result",result_json)
+        try:
+            result_json = result_json.json()
+        except Exception as e:
+            pass
         # reply END to the frontend
         payload = { 
             "action": "finishedMeeting",
-            "data": result_json.json(),
+            "data": result_json,
             "metrics": metrics,
             #"tasks": result["tasks_outputs"].dict(),
         } 
@@ -374,27 +388,25 @@ class Meeting:
         return self
 
     def get_tool(self, tool_id):
-        # chroma config helper
-        def chroma_config(keyword="youtube"):
+        # vector DB config helper
+        def vector_config(keyword="youtube"):
             return {
                 "app": {
                     "config": {
-                        "name": f"{keyword}_chroma",
+                        "name": f"{keyword}_pinecone",
                     }
                 },
                 "vectordb" : {
-                    "provider": "chroma",
+                    "provider": "pinecone",
                     "config": {
-                        "collection_name": "fenix-black",
-                        "dir": f"db_chroma_{keyword}",
-                        "allow_reset": True
+                        "metric": "cosine",
+                        "vector_dimension": 1536, 
+                        "index_name": f"fenix-black-test",
+                        #"serverless_config": {
+                        #    "cloud": "aws",
+                        #    "region": "us-west-2",
+                        #}
                     } 
-                },
-                "chunker": {
-                    "chunk_size": 1000,
-                    "chunk_overlap": 50,
-                    "length_function": "len",
-                    "min_chunk_size": 200
                 },
             }
         # get the tool object given the tool_id
@@ -403,18 +415,18 @@ class Meeting:
             return SerperDevTool()
         elif tool_id == "website_search":
             from crewai_tools import WebsiteSearchTool
-            return WebsiteSearchTool(config=chroma_config("websites"))
+            return WebsiteSearchTool(config=vector_config("websites"))
         elif tool_id == "scrape":
             #from tools.scrape_website_html_tool import ScrapeWebsiteTool
             from crewai_tools import ScrapeWebsiteTool
             return ScrapeWebsiteTool() 
         elif tool_id == "pdf_reader":
-            from tools.pdf_search_tool import PDFSearchTool
-            return PDFSearchTool()
-            #from crewai_tools import PDFSearchTool
+            from crewai_tools import PDFSearchTool
+            #from tools.pdf_search_tool import PDFSearchTool
+            return PDFSearchTool(config=vector_config("youtube"))
         elif tool_id == "youtube_video_search":
             from crewai_tools import YoutubeVideoSearchTool
-            return YoutubeVideoSearchTool(config=chroma_config("youtube")) 
+            return YoutubeVideoSearchTool(config=vector_config("youtube")) 
         return None
     
     def create_meeting(self, request):

@@ -16,7 +16,10 @@ RUN pip install git+https://github.com/Fenix-black/crewAI.git
 #RUN pip install --no-cache-dir https://github.com/joaomdmoura/crewAI/archive/main.zip
 RUN pip install --no-cache-dir "crewai[tools]" 
 # required for PDF and embedchain
-#RUN pip install --upgrade "embedchain[dataloaders]"
+RUN pip install --upgrade "embedchain[dataloaders]"
+# add pinecone support
+RUN pip install --upgrade "pinecone-client"
+RUN pip install --upgrade "pinecone-text"
 #RUN pip install --no-cache-dir embedchain
 
 # Set the working directory

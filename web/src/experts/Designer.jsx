@@ -25,9 +25,9 @@ const Designer = forwardRef(({
         materials a developer can understand. 
         # We cannot send emails to the client nor call them to ask for more information, so based all your responses on what you can find online and from your peers.`,
         collaborate: true,
-        avatar: { 
+        avatar: {  
             bgColor: '#E75A01', 
-            hairColor: '#fbe7a1',
+            hairColor: '#fbe7a1', 
             shirtColor: '#C8F526',  
             skinColor: avatar.skinColor.pale,
             earSize: avatar.earSize.medium, 
@@ -44,7 +44,7 @@ const Designer = forwardRef(({
             [tools.search]: { 'searching':'Searching websites for more information.' },
             [tools.website_search]: { 'searching':'Searching website for more information.' },
             [tools.scrape]: { 'analyzing:#FFFFFF': 'Understanding the design ..' },
-            [tools.pdf_reader]: { 'reading': 'Reading pdf ..' },
+            [tools.pdf_reader]: { 'pdf_reader': 'Reading pdf ..' },
             [tools.youtube_video_search]: { 'reading': 'Searching on youtube video transcription ..' },
         }
     };

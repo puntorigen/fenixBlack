@@ -1,4 +1,4 @@
-import React, { forwardRef, useRef, useEffect, useImperativeHandle } from 'react';
+import React, { forwardRef, useRef, useEffect, useState, useImperativeHandle } from 'react';
 import Puppet from '../components/Puppet';
 
 const Agent = forwardRef(({
@@ -10,6 +10,7 @@ const Agent = forwardRef(({
     onSpeakEnd,
 }, ref) => {
     const puppetRef = useRef();
+    const [ size, setSize ] = useState({ width, height });
 
     const setup = () => {
         // Example: set up Puppet based on Agent's props like age and gender
@@ -26,6 +27,7 @@ const Agent = forwardRef(({
         // Custom methods
         getID: ()=>id,
         meta: () => meta,
+        setSize: (width, height) => setSize({ width, height }),
         play: async(tool='search',bgcolor=meta.avatar.bgColor || '#6BD9E9',textDelay=2000) => {
             if (puppetRef.current) {
                 if (tool in meta.tools) {
@@ -43,7 +45,7 @@ const Agent = forwardRef(({
                         puppetRef.current.avatarSize('100%');
                     }); 
                 }
-            }
+            } 
         },
         json: () => {
             // builds a JSON representation for the Meeting component
@@ -77,8 +79,8 @@ const Agent = forwardRef(({
             eyebrowsStyle={meta.avatar.eyebrowsStyle}
 
             initialText={''}
-            width={width}
-            height={height}
+            width={size.width}
+            height={size.height}
 
             style={style}
             onSpeakEnd={onSpeakEnd}

@@ -1,17 +1,9 @@
-import json, os, logging
-from typing import Optional, Dict, Any, List
-
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+import json, os, asyncio
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from contextlib import asynccontextmanager
-from pydantic import BaseModel, Field
-#from chain import chain
-from db.database import Database
 from utils.ConnectionManager import ConnectionManager
 
-from meeting import Meeting, ExpertModel, TaskContext
-from crewai import Agent, Task, Crew, Process
-from textwrap import dedent
-from utils.LLMs import get_llm, get_max_num_iterations
+from meeting import Meeting
 #from db.models import Comment, Scanned
 
 from urllib.parse import urlparse

@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useCallback, useState, forwardRef, useImperativeHandle } from 'react';
 import { zodToJson,splitSentences } from '../utils/utils';
+import { useWindowSize } from "@uidotdev/usehooks";
 
 const useRefs = () => {
     const refs = useRef({});
@@ -13,10 +14,12 @@ const useRefs = () => {
     return [ refs, register ];
 };
 
-const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMain) => {
+const Meeting = forwardRef(({ name, task, outputKey, children, onFinish, onError }, refMain) => {
     const [refs, register] = useRefs();
     const [experts, setExperts] = useState({});
     const websocketRef = useRef(null);
+    const windowSize = useWindowSize();
+    const [inProgress, setInProgress] = useState(false);
 
     useEffect(() => {
         // Log meta information from children
@@ -55,10 +58,46 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMa
         };
         websocket.onerror = error => console.error('WebSocket Error: ', error);
         websocket.onmessage = onMessage;  // Set dynamically
-        websocket.onclose = () => console.log('WebSocket Closed');
+        websocket.onclose = async() => {
+            if (inProgress && inProgress === true) {
+                // there was an error because the connection was closed before the meeting ended
+                onError && onError('Connection closed before the meeting ended.');
+                // stop all avatar animations
+                try {
+                    for (const expert_id in refs.current) {
+                        refs.current[expert_id].avatarSize('100%');
+                        await refs.current[expert_id].stop();
+                    }
+                } catch(err) {}
+                setInProgress(false); 
+            } else {
+                console.log('WebSocket Closed');
+            }
+        }
         websocketRef.current = websocket;
         return websocket;
-    };    
+    };
+
+    // adjust size depending on the number of expert childrens
+    useEffect(() => {
+        console.log('adjusting experts box size ..')
+        let size = 300; // used to adjust by percentage to fit width of screen
+        let screenWidth = windowSize.width * 0.9; // 90% of full width
+        if (Object.keys(experts).length > 0) {
+            size = screenWidth/Object.keys(experts).length;
+        }
+        // limit the max and min sizes
+        if (size > 300) size = 300; 
+        if (size < 180) size = 180; 
+        // iterate the experts and set the size
+        for (const expert_id in refs.current) {
+            if (refs.current[expert_id].setSize) {
+                //console.log('setting expert size box to',size+'px',size+'px')
+                refs.current[expert_id].setSize(size+'px',size+'px');
+            }
+        } 
+    }, [experts, windowSize.width]);
+ 
 
     // Expose Meeting's methods to parent through ref
     useImperativeHandle(refMain, () => ({
@@ -85,6 +124,7 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMa
             // 2. connect to backend via websocket and send data
             const handleMessage = async(event) => {
                 // 3. wait for responses and update the children with the new data
+                const dJSON = require('dirty-json');
                 let obj = event.data;
                 try {
                     obj = JSON.parse(event.data);
@@ -96,6 +136,7 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMa
                     console.log('Received keepalive event.');
                 } else if (obj?.action === 'server_status') {
                 } else if (obj?.action === 'createTask') {
+                    setInProgress(true);
                     // dummy, update an avatar with the data (just testing)
                     console.log('Received data:', obj);
                     if (refs.current['field-1']) {
@@ -163,10 +204,17 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMa
                         zod_schema = schema.parse(obj.data);
                         console.log('Schema enforced result:', zod_schema);
                     } catch(e) {
-                        console.error('Schema enforcement failed:', e);
-                        console.log('Received data:', obj);
+                        try {
+                            zod_schema = dJSON.parse(obj.data);
+                            console.log('Schema enforced2 result:', zod_schema);
+                        } catch(e2) { 
+                            zod_schema = obj.data;
+                            console.error('Schema enforcement failed:', e);
+                            console.log('Received data:', zod_schema);
+                        }
                     }
                     // 4. wait for end of meeting, convert output JSON to zod schema and return, and assign raw output to outputKey ref variable
+                    setInProgress(false);
                     if (websocketRef.current) {
                         websocketRef.current.close();
                         console.log('Meeting ended and socket closed.');
