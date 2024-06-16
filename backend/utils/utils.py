@@ -1,6 +1,20 @@
 from pydantic import BaseModel, Field, create_model
 from typing import Any, Dict, List, Type, Optional
 
+class MyBaseModel(BaseModel):
+    def model_dump(self):
+        # Example implementation, customize it as needed
+        return self.model_dump_json()
+
+    # If you need to customize serialization further:
+    def dict(self, **kwargs):
+        # Customize the dict output if necessary
+        return super().model_dump(**kwargs)
+
+    def json(self, **kwargs):
+        # Customize the JSON output if necessary
+        return super().model_dump_json(**kwargs)
+
 def json2pydantic(json_schema: Dict[str, Any]) -> Type[BaseModel]:
     def create_pydantic_model(schema: Dict[str, Any], model_name: str = "DynamicModel") -> Type[BaseModel]:
         fields = {}
@@ -27,7 +41,8 @@ def json2pydantic(json_schema: Dict[str, Any]) -> Type[BaseModel]:
                 # Simple types
                 fields[prop_name] = (get_python_type(field_type), Field(... if is_required else None, description=field_description))
 
-        return create_model(model_name, **fields)
+        return create_model(model_name, __base__=MyBaseModel, **fields)
+        #return create_model(model_name, **fields)
 
     def get_python_type(js_type: str) -> Any:
         type_mapping = {

@@ -4,12 +4,23 @@ from utils.LLMs import get_llm, get_max_num_iterations
 from schemas import TaskContext, ExpertModel, ImprovedTask
 
 from textwrap import dedent
-from utils.utils import json2pydantic
+from utils.utils import json2pydantic, MyBaseModel
 import json, os, asyncio
 
 import instructor
 from openai import AsyncOpenAI, OpenAI
 from langchain_openai import ChatOpenAI
+
+# increase connection pool size
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+session = requests.Session()
+retries = Retry(total=5, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
+adapter = HTTPAdapter(max_retries=retries, pool_connections=20, pool_maxsize=50)
+session.mount('https://', adapter)
+session.mount('http://', adapter)
 
 # TODO: add support for ollama here
 client_instructor = instructor.apatch(AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY")))
@@ -338,49 +349,72 @@ class Meeting:
         crew = Crew(
             agents=experts,
             tasks=[task],
-            verbose=1,
+            verbose=False,
             process=Process.hierarchical,
             manager_llm=ChatOpenAI(model="gpt-4"),
             memory=False,  
-            task_callback=task_callback
+            task_callback=task_callback,
+            full_output=True
         ) 
         # launch the crew
         print("Starting CREW processing ..")
         result = crew.kickoff()
         #result = await crew.kickoff_async()
-        result_json = result
-        try: 
-            result_json = result.model_dump()
-        except Exception as e:
-            print("DEBUG: result_json ERROR",e)
-            #result_json = result
+        result_json:MyBaseModel = result["final_output"]
+        metrics:dict = result["usage_metrics"]
         print("DEBUG: result",result_json)
         # reply END to the frontend
         payload = { 
             "action": "finishedMeeting",
-            "data": result_json
+            "data": result_json,
+            "metrics": metrics,
+            #"tasks": result["tasks_outputs"].dict(),
         } 
         self.sendDataSync(payload)
         return self
 
     def get_tool(self, tool_id):
+        # chroma config helper
+        def chroma_config(keyword="youtube"):
+            return {
+                "app": {
+                    "config": {
+                        "name": f"{keyword}_chroma",
+                    }
+                },
+                "vectordb" : {
+                    "provider": "chroma",
+                    "config": {
+                        "collection_name": "fenix-black",
+                        "dir": f"db_chroma_{keyword}",
+                        "allow_reset": True
+                    } 
+                },
+                "chunker": {
+                    "chunk_size": 1000,
+                    "chunk_overlap": 50,
+                    "length_function": "len",
+                    "min_chunk_size": 200
+                },
+            }
         # get the tool object given the tool_id
         if tool_id == "search":
             from crewai_tools import SerperDevTool
             return SerperDevTool()
         elif tool_id == "website_search":
             from crewai_tools import WebsiteSearchTool
-            return WebsiteSearchTool()
+            return WebsiteSearchTool(config=chroma_config("websites"))
         elif tool_id == "scrape":
             #from tools.scrape_website_html_tool import ScrapeWebsiteTool
             from crewai_tools import ScrapeWebsiteTool
             return ScrapeWebsiteTool() 
         elif tool_id == "pdf_reader":
-            from crewai_tools import PDFSearchTool
+            from tools.pdf_search_tool import PDFSearchTool
             return PDFSearchTool()
+            #from crewai_tools import PDFSearchTool
         elif tool_id == "youtube_video_search":
             from crewai_tools import YoutubeVideoSearchTool
-            return YoutubeVideoSearchTool() 
+            return YoutubeVideoSearchTool(config=chroma_config("youtube")) 
         return None
     
     def create_meeting(self, request):

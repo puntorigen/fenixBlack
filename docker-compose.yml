@@ -1,4 +1,20 @@
+networks:
+  net:
+    driver: bridge
+
 services:
+  chromadb:
+    container_name: fenix_chromadb
+    image: ghcr.io/chroma-core/chroma:latest
+    command: "--workers 1 --host 0.0.0.0 --port 8000 --proxy-headers --log-config chromadb/log_config.yml --timeout-keep-alive 30"
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    ports:
+      - 4000:8000
+    networks:
+      - net
+
   web:
     container_name: fenix_frontend 
     build: 
@@ -10,6 +26,8 @@ services:
       - ./web:/web
     environment:
       - CHOKIDAR_USEPOLLING=true  # Ensures file watching works on all OS and Docker setups
+    networks:
+      - net
 
   backend:
     container_name: fenix_backend 
@@ -21,6 +39,10 @@ services:
       - ./backend/.env
     environment:
       - CHOKIDAR_USEPOLLING=true  # Ensures file watching works on all OS and Docker setups
+    networks:
+      - net
+    depends_on: 
+      - "chromadb"
     develop:
       watch:
         - action: sync+restart

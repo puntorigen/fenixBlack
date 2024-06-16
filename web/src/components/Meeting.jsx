@@ -138,9 +138,11 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish }, refMa
                                 await refs.current[play.expert_id].stop();
                             });
                         }
+                    } else if (play.kind === 'tool') {
+                        //console.log('TOOL NOT USED');
                     } else {
-                        console.log('DEBUG: TOOL NOT DETECTED:',obj);
-                    } 
+                        console.log('DEBUG: THOUGHT OBJECT:',obj);
+                    }
 
                 } else if (obj?.action === 'finishedMeeting') {
                     // dummy, update an avatar with the data (just testing)
