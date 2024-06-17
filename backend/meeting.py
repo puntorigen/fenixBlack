@@ -333,8 +333,7 @@ class Meeting:
                 "data": str(e)
             }
             self.sendDataSync(payload)
-            self.manager.disconnect(self.meeting_id)
-            return self
+            raise
         
         # create Task Agent (Coordinator)
         print("DEBUG: creating task agent (coordinator)")
@@ -391,8 +390,9 @@ class Meeting:
                 "data": str(e)
             }
             self.sendDataSync(payload)
-            self.manager.disconnect(self.meeting_id)
-            return self
+            raise
+            #self.manager.disconnect(self.meeting_id)
+            # raise error to disconnect the meeting
         
         #result = await crew.kickoff_async()
         result_json:MyBaseModel = result["final_output"]

@@ -14,10 +14,11 @@ class ConnectionManager:
         await websocket.accept()
         self.rooms[room_id].append(websocket)
 
-    def disconnect(self, room_id: str):
+    def disconnect(self, websocket: WebSocket, room_id: str):
         try:
-            self.rooms[room_id].remove(self.websocket)
-            if not self.rooms[room_id]:
+            #if not self.rooms[room_id]:
+            if self.rooms[room_id]:
+                self.rooms[room_id].remove(websocket)
                 del self.rooms[room_id]
                 #if room_id in self.keepalive_tasks:
                 #    self.keepalive_tasks[room_id].cancel()

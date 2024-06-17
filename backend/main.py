@@ -67,10 +67,13 @@ async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
                 break
 
         # end meeting
-        manager.disconnect(meeting_id)
+        try:
+            manager.disconnect(websocket,meeting_id)
+        except Exception as e:
+            pass
 
     except WebSocketDisconnect:
-        manager.disconnect(meeting_id)
+        manager.disconnect(websocket,meeting_id)
 
 if __name__ == "__main__":
     import uvicorn
