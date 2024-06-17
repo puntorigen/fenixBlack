@@ -26,7 +26,9 @@ const Agent = forwardRef(({
         ...puppetRef.current,
         // Custom methods
         getID: ()=>id,
-        meta: () => meta,
+        meta: () => ({...meta, ...{ 
+            max_execution_time: 60*5 // 5 minutes
+        }}), 
         setSize: (width, height) => setSize({ width, height }),
         play: async(tool='search',bgcolor=meta.avatar.bgColor || '#6BD9E9',textDelay=2000) => {
             if (puppetRef.current) {

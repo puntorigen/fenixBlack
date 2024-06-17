@@ -41,7 +41,7 @@ app = FastAPI(lifespan=lifespan)
 
 @app.websocket("/meeting/{meeting_id}")
 async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
-    manager = ConnectionManager()
+    manager = ConnectionManager(websocket)
     await manager.connect(websocket, meeting_id)
     try: 
         while True:
@@ -59,6 +59,7 @@ async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
                 )
                 meet = await asyncio.to_thread(current_meeting.launch_task)
                 meet.loop.stop()
+                break
                 #await current_meeting.launch_task()
                 #break
             else:
@@ -66,10 +67,10 @@ async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
                 break
 
         # end meeting
-        manager.disconnect(websocket, meeting_id)
+        manager.disconnect(meeting_id)
 
     except WebSocketDisconnect:
-        manager.disconnect(websocket, meeting_id)
+        manager.disconnect(meeting_id)
 
 if __name__ == "__main__":
     import uvicorn

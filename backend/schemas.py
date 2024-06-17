@@ -36,6 +36,7 @@ class ExpertModel(BaseModel):
     tools: Optional[Tools] = Field(None, description="Tools associated with the expert and their specific functions")
     avatar_id: str = Field(..., description="Identifier for the field associated with the avatar")
     study: Optional[List[str]] = Field(None, description="Optional list of URLs for learning resources related to the expert")
+    max_execution_time: int = Field(..., description="Maximum number of seconds the expert can work on a task")
 
 class TaskContext(BaseModel):
     context: str = Field(..., description="The context of the task")

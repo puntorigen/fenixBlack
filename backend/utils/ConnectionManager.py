@@ -2,8 +2,9 @@ from fastapi import WebSocket
 import asyncio
 
 class ConnectionManager:
-    def __init__(self):
+    def __init__(self, websocket: WebSocket):
         self.rooms = {}
+        self.websocket = websocket
         #self.keepalive_tasks = {}
 
     async def connect(self, websocket: WebSocket, room_id: str):
@@ -13,13 +14,16 @@ class ConnectionManager:
         await websocket.accept()
         self.rooms[room_id].append(websocket)
 
-    def disconnect(self, websocket: WebSocket, room_id: str):
-        self.rooms[room_id].remove(websocket)
-        if not self.rooms[room_id]:
-            del self.rooms[room_id]
-            #if room_id in self.keepalive_tasks:
-            #    self.keepalive_tasks[room_id].cancel()
-            #    del self.keepalive_tasks[room_id]
+    def disconnect(self, room_id: str):
+        try:
+            self.rooms[room_id].remove(self.websocket)
+            if not self.rooms[room_id]:
+                del self.rooms[room_id]
+                #if room_id in self.keepalive_tasks:
+                #    self.keepalive_tasks[room_id].cancel()
+                #    del self.keepalive_tasks[room_id]
+        except ValueError:
+            pass 
 
     async def send_message(self, message: str, room_id: str):
         connections = self.rooms.get(room_id, [])

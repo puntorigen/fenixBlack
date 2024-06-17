@@ -239,10 +239,11 @@ class Meeting:
             verbose=True,
             memory=False,
             allow_delegation=expert.collaborate,
+            max_execution_time=expert.max_execution_time,
             max_iter=get_max_num_iterations(10),
             llm=get_llm(openai="gpt-4", temperature=0.1),
             tools=tools,
-            step_callback=reportAgentStepsSync
+            step_callback=reportAgentStepsSync 
         )
         self.sendDataSync({
             "action": "creating_expert",
@@ -300,29 +301,41 @@ class Meeting:
         experts = self.experts
         task = self.meta
         # TODO: create instructor call here
-        improved = client_instructor_sync.chat.completions.create(
-            model="gpt-4",
-            response_model=ImprovedTask, 
-            messages=[
-                {"role": "system", "content": "# act as an expert prompt engineer. Consider the following JSON object as the context for writing an easier to understand task 'description' that a junior analyst can understand, and a clear 'expected_output' field that describes the expected data output from the given schema in a couple of paragraphs."},
-                {"role": "user", "content": dedent(f"""
-                    # Use the following JSON schema to understand the expected_output:
-                    ```{json.dumps(task.schema)}```
+        try:
+            improved = client_instructor_sync.chat.completions.create(
+                model="gpt-4",
+                response_model=ImprovedTask, 
+                messages=[
+                    {"role": "system", "content": "# act as an expert prompt engineer. Consider the following JSON object as the context for writing an easier to understand task 'description' that a junior analyst can understand, and a clear 'expected_output' field that describes the expected data output from the given schema in a couple of paragraphs."},
+                    {"role": "user", "content": dedent(f"""
+                        # Use the following JSON schema to understand the expected_output:
+                        ```{json.dumps(task.schema)}```
 
-                    # It's most important that you never loose focus on the task expected to be achieved by the user, which is:
-                    ```{task.task}```
-                    # using the following context:
-                    ```{task.context}```
-                """)},
-            ],
-            temperature=0.02,
-            stream=False,
-        )
-        self.sendDataSync({
-            "action": "improvedTask",
-            "data": improved.model_dump(),
-        })
-        print("Improved task", improved.model_dump())
+                        # It's most important that you never loose focus on the task expected to be achieved by the user, which is:
+                        ```{task.task}```
+                        # using the following context:
+                        ```{task.context}```
+                    """)},
+                ],
+                temperature=0.02,
+                stream=False,
+            )
+            self.sendDataSync({
+                "action": "improvedTask",
+                "data": improved.model_dump(),
+            })
+            print("Improved task", improved.model_dump())
+        except Exception as e:
+            print("DEBUG: improving task ERROR",e)
+            payload = { 
+                "action": "error",
+                "type": "improved_task",
+                "data": str(e)
+            }
+            self.sendDataSync(payload)
+            self.manager.disconnect(self.meeting_id)
+            return self
+        
         # create Task Agent (Coordinator)
         print("DEBUG: creating task agent (coordinator)")
         coordinator = self.create_task_agent(task, improved)
@@ -377,8 +390,10 @@ class Meeting:
                 "type": "crew_kickoff",
                 "data": str(e)
             }
-            self.sendDataSync(payload) 
-            return self 
+            self.sendDataSync(payload)
+            self.manager.disconnect(self.meeting_id)
+            return self
+        
         #result = await crew.kickoff_async()
         result_json:MyBaseModel = result["final_output"]
         metrics:dict = result["usage_metrics"]
