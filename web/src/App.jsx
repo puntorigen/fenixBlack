@@ -61,7 +61,7 @@ function App() {
           }}>
           <AccountManager name="Mauricio1" />
           <Designer />
-          <Lawyer study={ //learns the given data if needed
+          <Lawyer study={ //learns the given data before starting the meeting
             ['https://ico.org.uk/media/for-organisations/guide-to-the-general-data-protection-regulation-gdpr-1-0.pdf']
           } />
         </Meeting> 
@@ -92,6 +92,8 @@ function App() {
           ref={meetingBrand} 
           task="design a brand guideline report with their recommended hex colors usage, fonts faces and families, and build a complete design brand guideline that can be used in creating future products." 
           outputKey="brand"
+          //rules={['/rules/base.txt']} url of text rules all experts need to follow (content is appended to the backstory of each expert)
+          //study={[]} things that all experts need to know in order to start the meeting
           onDialog={(dialog)=>setDialog(dialog)}
           onError={(error)=>{
             console.log('meeting finished due to an error',error);
