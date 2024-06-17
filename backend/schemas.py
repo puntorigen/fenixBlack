@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from pydantic import BaseModel, Field
 
 class AvatarDetails(BaseModel):
@@ -35,6 +35,7 @@ class ExpertModel(BaseModel):
     avatar: Optional[AvatarDetails] = Field(None, description="Detailed avatar settings of the expert")
     tools: Optional[Tools] = Field(None, description="Tools associated with the expert and their specific functions")
     avatar_id: str = Field(..., description="Identifier for the field associated with the avatar")
+    study: Optional[List[str]] = Field(None, description="Optional list of URLs for learning resources related to the expert")
 
 class TaskContext(BaseModel):
     context: str = Field(..., description="The context of the task")

@@ -90,7 +90,7 @@ function App() {
         <Meeting 
           name="brandBuilder" 
           ref={meetingBrand} 
-          task="research what does the company do, their hex colors, used fonts faces, and build a complete design brand guideline report" 
+          task="design a brand guideline report with their recommended hex colors usage, fonts faces and families, and build a complete design brand guideline that can be used in creating future products." 
           outputKey="brand"
           onDialog={(dialog)=>setDialog(dialog)}
           onError={(error)=>{
@@ -102,8 +102,12 @@ function App() {
             setInMeeting(false);
           }}> 
           <AccountManager name="Mauricio" />
-          <ResearchAnalyst />
-          <Designer />
+          <ResearchAnalyst /> 
+          <Designer study={[
+            'https://blog.logrocket.com/ux-design/30-design-techniques/',
+            'https://assets.ctfassets.net/uha7v3hw004j/4FuCRjBFe4mtOBU236eNyZ/5bdbf5f91949a26138bf6d6c1ed23dcc/ColorPaletteGuide_2020_HighContrast.pdf',
+            'https://cdn2.hubspot.net/hubfs/53/How%20to%20Create%20a%20Brand%20Style%20Guide%20-%20HubSpot%20%26%20Venngage%20%5BEBOOK%20+%20TEMPLATES%5D.pdf'
+          ]} /> 
           <LeadMarketAnalyst name="Julio" />
         </Meeting>
         <WiredCard elevation={2} style={{marginBottom:100, color:'white', textAlign:'left', width:'80%' }}>
@@ -111,7 +115,7 @@ function App() {
         <span style={{ fontFamily:'sans-serif' }}>
           {dialog && dialog.map((d,i)=><p key={i}>{d.full}</p>)}
         </span>
-        </WiredCard>
+        </WiredCard> 
       </div>
   );
 }

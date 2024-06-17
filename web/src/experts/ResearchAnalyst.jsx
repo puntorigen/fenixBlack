@@ -10,6 +10,7 @@ const ResearchAnalyst = forwardRef(({
     task="", // specific task for this agent instance
     style,
     onAnimationEnd,
+    study=[],
 }, ref) => {
     const expertRef = useRef(); 
 
@@ -43,7 +44,8 @@ const ResearchAnalyst = forwardRef(({
             [tools.website_search]: { 'webpage': 'Reading the contents ..' },
             [tools.pdf_reader]: { 'reading': 'Reading PDF contents ..' },
             [tools.youtube_video_search]: { 'reading': 'Analyzing youtube video ..' },
-        } 
+        },
+        study: study
     };
     if (task !== "") {
         meta.backstory += `. Your current main task is to '${task}'`;
@@ -75,10 +77,6 @@ const ResearchAnalyst = forwardRef(({
             id={id}
             meta={meta}
             name={name}
-            bgColor={meta.avatar.bgColor}
-            hairColor={meta.avatar.hairColor}
-            shirtColor={meta.avatar.shirtColor}
-            skinColor={meta.avatar.skinColor}
             style={style}
             onSpeakEnd={onAnimationEnd}
             // other props that Agent expects

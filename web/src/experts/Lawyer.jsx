@@ -9,6 +9,7 @@ const Lawyer = forwardRef(({
     gender="male",
     style,
     onAnimationEnd,
+    study=[],
 }, ref) => {
     const expertRef = useRef();
 
@@ -40,7 +41,8 @@ const Lawyer = forwardRef(({
         tools: { // defines animations and which tools are available for this agent
             [tools.search]: { 'searching':'Searching websites for more information.' },
             [tools.scrape]: { 'analyzing:#FFFFFF': 'Understanding the website ..' },
-        }
+        },
+        study: study
     };
 
     const setup = () => {

@@ -32,13 +32,10 @@ class Meeting:
         self.tool_name_map = {} # map tool names to tool ids
         self.manager = manager
         self.loop = None
-        self.experts = []
-        for expert in experts:
-            expert_json = ExpertModel(**experts[expert])
-            expert_ = self.create_expert(expert=expert_json)
-            self.experts.append(expert_)
 
         self.meeting_id = meeting_id
+        self.experts = []
+        self.experts_ = experts
         self.meta = TaskContext(**meta) # full meta data
         self.name = meta["name"] # TODO refactor code below to use self.meta["key"] instead
         self.context = meta["context"]
@@ -200,6 +197,8 @@ class Meeting:
             self.loop.run_until_complete(self.send_data(data))
             #asyncio.create_task(self.send_data(data))
         try:
+            if self.loop is None:
+                self.loop = asyncio.get_event_loop() 
             self.loop.run_until_complete(self.send_data(data))
             #asyncio.create_task(self.send_data(data))
 
@@ -208,13 +207,25 @@ class Meeting:
             createNewLoop()
 
     def create_expert(self, expert: ExpertModel):
+        self.sendDataSync({
+            "action": "creating_expert",
+            "expert_id": expert.avatar_id,
+            "in_progress": True
+        })
         # create list of tools for this expert
         tools = []
         for key in expert.tools:
             tool = self.get_tool(key[0])
-            if tool is not None:
+            if tool is not None: 
                 self.tool_name_map[tool.name] = key[0]
                 tools.append(tool)
+        # add RAG tool for each 'expert.study' item
+        if expert.study:
+            for url in expert.study:
+                rag_tool = self.get_study_tool(url)
+                if rag_tool is not None:
+                    self.tool_name_map[tool.name] = 'study'
+                    tools.append(rag_tool)
 
         # create report specific for Expert
         def reportAgentStepsSync(step_output):
@@ -233,6 +244,11 @@ class Meeting:
             tools=tools,
             step_callback=reportAgentStepsSync
         )
+        self.sendDataSync({
+            "action": "creating_expert",
+            "expert_id": expert.avatar_id,
+            "in_progress": False
+        })
         return temp
 
     def create_task_agent(self, task: TaskContext, improvedTask: ImprovedTask):
@@ -241,17 +257,6 @@ class Meeting:
             # Get the current running loop and create a new task
             coordinator_expert = ExpertModel(role="coordinator",goal="coordinator",backstory="coordinator",collaborate=True,avatar_id="coordinator")
             self.reportAgentStepsSync2(step_output,coordinator_expert)
-            #try:
-            #    loop = asyncio.get_running_loop()
-            #    if loop.is_running():
-            #        loop.create_task(self.reportAgentSteps(step_output,coordinator_expert))
-            #    else:
-            #        print("reportAgentStepsSync (taskagent)->EVENT LOOP IS NOT RUNNIN; not creating")
-                    #loop.run_until_complete(self.reportAgentSteps(step_output))
-            #except Exception as e:
-            #    print("reportAgentStepsSync (taskagent)->EVENT LOOP ERROR; not creating",e)
-                #loop = asyncio.new_event_loop()
-                #loop.run_until_complete(self.reportAgentSteps(step_output,coordinator_expert))
 
         # creates an agent to start and coordinate the task assignment
         return Agent(
@@ -272,7 +277,7 @@ class Meeting:
             allow_delegation=True,
             verbose=True,
             max_iter=get_max_num_iterations(10),
-            llm=get_llm("gpt-4-0125-preview"),
+            llm=get_llm("gpt-4o"),
             tools=[],
             step_callback=reportAgentStepsSync
         )
@@ -283,6 +288,11 @@ class Meeting:
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
         
+        for expert in self.experts_:
+            expert_json = ExpertModel(**self.experts_[expert])
+            expert_ = self.create_expert(expert=expert_json)
+            self.experts.append(expert_)
+
         self.sendDataSync({
             "action": "createTask",
             "data": "Improving task definition",
@@ -351,7 +361,7 @@ class Meeting:
             tasks=[task],
             verbose=False,
             process=Process.hierarchical,
-            manager_llm=ChatOpenAI(model="gpt-4", temperature=0.0),
+            manager_llm=ChatOpenAI(model="gpt-4o", temperature=0.0),
             memory=False,  
             task_callback=task_callback,
             full_output=True
@@ -361,7 +371,7 @@ class Meeting:
         try:
             result = crew.kickoff() 
         except Exception as e:
-            print("DEBUG: crew.kickoff ERROR (maybe without balance?)",e)
+            print("DEBUG: meeting ERROR",e)
             payload = { 
                 "action": "error",
                 "type": "crew_kickoff",
@@ -387,35 +397,76 @@ class Meeting:
         self.sendDataSync(payload)
         return self
 
+    def vector_config(self, keyword="youtube"):
+        return {
+            "app": {
+                "config": {
+                    "name": f"{keyword}_pinecone",
+                }
+            },
+            "vectordb" : {
+                "provider": "pinecone",
+                "config": {
+                    "metric": "cosine",
+                    "vector_dimension": 1536, 
+                    "index_name": f"fenix-black-test",
+                    #"serverless_config": {
+                    #    "cloud": "aws",
+                    #    "region": "us-west-2",
+                    #}
+                } 
+            },
+        }
+
+    def get_study_tool(self, url):
+        # depending on url extension (.pdf, .html, .txt) return the appropriate tool
+        if url.endswith(".pdf"):
+            from crewai_tools import PDFSearchTool
+            return PDFSearchTool(config=self.vector_config("study"),pdf=url)
+        elif url.endswith(".txt"):
+            from crewai_tools import TXTSearchTool
+            return TXTSearchTool(config=self.vector_config("study"),txt=url)
+        elif url.endswith(".csv"):
+            from crewai_tools import CSVSearchTool
+            return TXTSearchTool(config=self.vector_config("study"),csv=url)
+        elif url.endswith(".xml"):
+            from crewai_tools import XMLSearchTool
+            return XMLSearchTool(config=self.vector_config("study"),xml=url)
+        elif url.endswith(".xml"):
+            from crewai_tools import JSONSearchTool
+            return JSONSearchTool(config=self.vector_config("study"),json_path=url)
+        elif url.endswith(".docx"):
+            from crewai_tools import DOCXSearchTool
+            return DOCXSearchTool(config=self.vector_config("study"),docx=url)
+        elif url.endswith(".mdx"):
+            from crewai_tools import MDXSearchTool
+            return MDXSearchTool(config=self.vector_config("study"),mdx=url)
+        elif "github.com" in url:
+            from crewai_tools import GithubSearchTool
+            return GithubSearchTool(config=self.vector_config("study"), github_url=url, content_types=['code','issue'])
+        elif "youtube.com" in url and "watch?" in url:
+            from crewai_tools import YoutubeVideoSearchTool
+            return YoutubeVideoSearchTool(config=self.vector_config("study"), youtube_video_url=url)
+        elif "postgresql://" in url and "|" in url:
+            #postgresql://user:password@localhost:5432/mydatabase|mytable
+            from crewai_tools import PGSearchTool
+            db_uri = url.split("|").pop(0)
+            db_table = url.split("|").pop(1)
+            return PGSearchTool(config=self.vector_config("study"), db_uri=db_uri, db_table=db_table)
+        
+        elif url.startswith("http"): # else if url contains website https:// or http://
+            from crewai_tools import WebsiteSearchTool
+            return WebsiteSearchTool(config=self.vector_config("study"), website=url)
+        return None
+
     def get_tool(self, tool_id):
-        # vector DB config helper
-        def vector_config(keyword="youtube"):
-            return {
-                "app": {
-                    "config": {
-                        "name": f"{keyword}_pinecone",
-                    }
-                },
-                "vectordb" : {
-                    "provider": "pinecone",
-                    "config": {
-                        "metric": "cosine",
-                        "vector_dimension": 1536, 
-                        "index_name": f"fenix-black-test",
-                        #"serverless_config": {
-                        #    "cloud": "aws",
-                        #    "region": "us-west-2",
-                        #}
-                    } 
-                },
-            }
         # get the tool object given the tool_id
         if tool_id == "search":
             from crewai_tools import SerperDevTool
             return SerperDevTool()
         elif tool_id == "website_search":
             from crewai_tools import WebsiteSearchTool
-            return WebsiteSearchTool(config=vector_config("websites"))
+            return WebsiteSearchTool(config=self.vector_config("websites"))
         elif tool_id == "scrape":
             #from tools.scrape_website_html_tool import ScrapeWebsiteTool
             from crewai_tools import ScrapeWebsiteTool
@@ -423,10 +474,10 @@ class Meeting:
         elif tool_id == "pdf_reader":
             from crewai_tools import PDFSearchTool
             #from tools.pdf_search_tool import PDFSearchTool
-            return PDFSearchTool(config=vector_config("youtube"))
+            return PDFSearchTool(config=self.vector_config("youtube"))
         elif tool_id == "youtube_video_search":
             from crewai_tools import YoutubeVideoSearchTool
-            return YoutubeVideoSearchTool(config=vector_config("youtube")) 
+            return YoutubeVideoSearchTool(config=self.vector_config("youtube")) 
         return None
     
     def create_meeting(self, request):

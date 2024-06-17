@@ -157,6 +157,29 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish, onError
                 if (typeof obj === 'string' &&  obj === 'KEEPALIVE') { //ignore keepalive events
                     console.log('Received keepalive event.');
                 } else if (obj?.action === 'server_status') {
+                } else if (obj?.action === 'creating_expert') {
+                    // in_progress when creating expert
+                    // in_progress false when expert created (after it has studied)
+                    if (obj.in_progress === true) {
+                        //console.log('Creating expert:', obj);
+                        // say Hi if expert has things to study 
+                        if (refs.current[obj.expert_id] && refs.current[obj.expert_id].speak) {
+                            const meta_expert = refs.current[obj.expert_id].meta();
+                            if (meta_expert.study && meta_expert.study.length > 0) {
+                                await refs.current[obj.expert_id].speak(`Hello, my name is ${meta_expert.name}, I'm the ${meta_expert.role}, and I am studying the material you gave me.`);
+                            }
+                        }
+                    } else {
+                        //console.log('Expert created:', obj);
+                        if (refs.current[obj.expert_id] && refs.current[obj.expert_id].speak) {
+                            const meta_expert = refs.current[obj.expert_id].meta();
+                            if (meta_expert.study && meta_expert.study.length > 0) {
+                                await refs.current[obj.expert_id].speak(`I'm ready to start the meeting.`);
+                            } else {
+                                await refs.current[obj.expert_id].speak(`Hello, my name is ${meta_expert.name}, I'm the ${meta_expert.role}, and I'm here to help you with your task.`);
+                            }
+                        }
+                    }
                 } else if (obj?.action === 'createTask') {
                     // dummy, update an avatar with the data (just testing)
                     console.log('Received data:', obj);

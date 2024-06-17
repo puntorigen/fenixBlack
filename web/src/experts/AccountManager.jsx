@@ -10,8 +10,7 @@ const AccountManager = forwardRef(({
     task="", // specific task for this agent instance
     style,
     onAnimationEnd,
-    width="300px",
-    height="300px",
+    study=[],
 }, ref) => {
     const expertRef = useRef(); 
 
@@ -71,12 +70,6 @@ const AccountManager = forwardRef(({
             id={id}
             meta={meta}
             name={name}
-            width={width}
-            height={height}
-            bgColor={meta.avatar.bgColor}
-            hairColor={meta.avatar.hairColor}
-            shirtColor={meta.avatar.shirtColor}
-            skinColor={meta.avatar.skinColor}
             style={style}
             onSpeakEnd={onAnimationEnd}
             // other props that Agent expects

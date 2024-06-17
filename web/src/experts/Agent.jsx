@@ -63,20 +63,7 @@ const Agent = forwardRef(({
         <Puppet
             ref={puppetRef}
             label={meta?.role}
-            bgColor={meta.avatar.bgColor}
-            hairColor={meta.avatar.hairColor}
-            shirtColor={meta.avatar.shirtColor}
-            skinColor={meta.avatar.skinColor}
-            
-            earSize={meta.avatar.earSize} 
-            hairStyle={meta.avatar.hairStyle}
-            noseStyle={meta.avatar.noseStyle}
-            shirtStyle={meta.avatar.shirtStyle}
-            facialHairStyle={meta.avatar.facialHairStyle}
-            glassesStyle={meta.avatar.glassesStyle}
-            speakSpeed={meta.avatar.speakSpeed}
-            blinkSpeed={meta.avatar.blinkSpeed}
-            eyebrowsStyle={meta.avatar.eyebrowsStyle}
+            {...meta.avatar}
 
             initialText={''}
             width={size.width}

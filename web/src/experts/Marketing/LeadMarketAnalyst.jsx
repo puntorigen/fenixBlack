@@ -9,6 +9,7 @@ const LeadMarketAnalyst = forwardRef(({
     gender="male",
     style,
     onAnimationEnd,
+    study=[],
 }, ref) => {
     const expertRef = useRef();
 
@@ -47,7 +48,8 @@ const LeadMarketAnalyst = forwardRef(({
             //[tools.scrape]: { 'analyzing:#FFFFFF': 'Understanding the design ..' },
             [tools.pdf_reader]: { 'reading': 'Reading pdf ..' },
             [tools.youtube_video_search]: { 'reading': 'Searching on youtube video transcription ..' },
-        }
+        },
+        study: study
     };
 
     const setup = () => {

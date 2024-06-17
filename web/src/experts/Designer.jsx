@@ -9,6 +9,7 @@ const Designer = forwardRef(({
     gender="male",
     style,
     onAnimationEnd,
+    study=[], 
 }, ref) => {
     const expertRef = useRef();
 
@@ -46,7 +47,8 @@ const Designer = forwardRef(({
             [tools.scrape]: { 'analyzing:#FFFFFF': 'Understanding the design ..' },
             [tools.pdf_reader]: { 'pdf_reader': 'Reading pdf ..' },
             [tools.youtube_video_search]: { 'reading': 'Searching on youtube video transcription ..' },
-        }
+        },
+        study: study
     };
 
     const setup = () => {
