@@ -1,8 +1,8 @@
 # Fenix Black
-AI based multi-agent Marketing Agency
+Realtime Visual AI based multi-agent Framework 
 
 ## Introduction
-This web application simulates a virtual meeting environment where AI-driven avatars, each representing specialized experts, collaborate to complete designated tasks. The system uses a ReactJS frontend and Python FastAPI backend, with communication facilitated through Websockets.
+This web framework simulates a virtual meeting environment where AI-driven avatars, each representing specialized experts, collaborate to complete designated tasks on a meeting. The system uses a ReactJS frontend and Python FastAPI backend, with communication facilitated through Websockets.
 
 ## Features
 - **Dynamic Avatars**: Utilizes [@nice-avatar-svg/react](https://www.npmjs.com/package/@nice-avatar-svg/react) for real-time avatar updates.
@@ -24,4 +24,4 @@ graph TD;
 <i>... readme in progress ...</i>
 <br/> 
 <br/> 
-<img src="diagram.svg"/>
+<center><img src="diagram.svg" width="500" alt="Repo Visualization"/></center>
