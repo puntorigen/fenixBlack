@@ -333,7 +333,7 @@ class Meeting:
                 "data": str(e)
             }
             self.sendDataSync(payload)
-            raise
+            raise 
         
         # create Task Agent (Coordinator)
         print("DEBUG: creating task agent (coordinator)")

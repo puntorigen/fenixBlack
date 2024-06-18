@@ -13,7 +13,6 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@uidotdev/usehooks": "^2.4.1",
-    "clippyjs": "^0.0.3",
     "dirty-json": "^0.9.2",
     "lodash": "^4.17.21",
     "lottie-colorify": "^0.8.0",

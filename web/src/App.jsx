@@ -92,7 +92,7 @@ function App() {
           ref={meetingBrand} 
           task="design a brand guideline report with their recommended hex colors usage, fonts faces and families, and build a complete design brand guideline that can be used in creating future products." 
           outputKey="brand"
-          //rules={['/rules/base.txt']} url of text rules all experts need to follow (content is appended to the backstory of each expert)
+          rules={['/rules/base.txt']} //url of text rules all experts need to follow (content is appended to the backstory of each expert)
           //study={[]} things that all experts need to know in order to start the meeting
           onDialog={(dialog)=>setDialog(dialog)}
           onError={(error)=>{

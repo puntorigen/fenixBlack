@@ -14,11 +14,12 @@ const useRefs = () => {
     return [ refs, register ];
 };
 
-const Meeting = forwardRef(({ name, task, outputKey, children, onFinish, onError, onDialog }, refMain) => {
+const Meeting = forwardRef(({ name, task, rules, outputKey, children, onFinish, onError, onDialog }, refMain) => {
     const [refs, register] = useRefs();
     const [experts, setExperts] = useState({});
     const websocketRef = useRef(null);
     const windowSize = useWindowSize();
+    const [combinedRules, setCombinedRules] = useState(''); // concatentated rules for the experts
     const [inProgress, setInProgress] = useState(false);
     const [transcript, setTranscript] = useState([]);
     const addTranscript = (speaker,message,type='thought',role='coordinator') => {
@@ -33,6 +34,71 @@ const Meeting = forwardRef(({ name, task, outputKey, children, onFinish, onError
         }
         setTranscript(prev => [...prev, obj]);
     };
+
+    useEffect(() => {
+        // load the urls from the rules array, and combine them as a single enumerated string
+        // for the experts to use them as part of their backstories
+        const downloadRule = async function(uri) {
+            const response = await fetch(uri);
+            const text = await response.text();
+            return text;
+        }
+        const process = async() => {
+            let rules_ = ''; 
+            const text2rules = (text, idx=0) => {
+                let rules__ = '';
+                let currentIdx = idx;
+                // break the text into breaklines, remove the int. at the begining and add to rules_
+                for (const line of text.split('\n')) {
+                    // remove the initial number of the line if it exists and if the line is not empty
+                    if (line.trim().length > 0) {
+                        // remove the initial number of the line if it exists
+                        const parts = line.split('. ');
+                        if (parts.length > 1) {
+                            rules__ += `${currentIdx}. ${parts[1]}\n`;
+                        } else {
+                            rules__ += `${currentIdx}. ${line}\n`;
+                        }
+                        currentIdx += 1;
+                    }
+                }
+                return { text:rules__, last_idx:currentIdx };
+            }
+            // loop and count index
+            let realIdx = 0;
+            for (let idx=0; idx < rules.length; idx++) {
+                const rule = rules[idx];
+                if (rule.startsWith('http')) {
+                    const text = await downloadRule(rule);
+                    let rules_obj = text2rules(text, realIdx+1);
+                    realIdx = rules_obj.last_idx;
+                    rules_ += rules_obj.text;
+                } else { 
+                    const text = await downloadRule(rule);
+                    let rules_obj = text2rules(text, realIdx+1);
+                    realIdx = rules_obj.last_idx;
+                    rules_ += rules_obj.text;
+                }
+            }
+            setCombinedRules(rules_);
+            // add rules to each expert backstory
+            Object.keys(refs.current).forEach(refName => {
+                if (refs.current[refName] && refs.current[refName].meta) {
+                    const meta = refs.current[refName].meta();
+                    const avatar_id = refs.current[refName].getID();  // trick to get the ID of the agent
+                    if (meta.type === 'expert') {
+                        meta.avatar_id = avatar_id;
+                        meta.backstory = `# Always follow the following rules in your responses:\n\n${rules_}\n\n${meta.backstory}`
+                        setExperts(prev => {
+                            return { ...prev, [meta.name+'|'+meta.role]: meta };
+                        })
+                    }
+                }
+            });
+            //
+        }
+        process();
+    }, [rules])
 
     useEffect(() => {
         // Log meta information from children
