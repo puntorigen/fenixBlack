@@ -1,14 +1,14 @@
-import json, os, asyncio
+import json, os, asyncio, base64
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from contextlib import asynccontextmanager
 from utils.ConnectionManager import ConnectionManager
-
-from meeting import Meeting
-#from db.models import Comment, Scanned
-
 from urllib.parse import urlparse
+from Crypto.Cipher import AES
 import asyncio
 
+from meeting import Meeting
+
+#from db.models import Comment, Scanned
 # Configure logging
 #logging.basicConfig(level=logging.INFO)
 #logger = logging.getLogger(__name__)

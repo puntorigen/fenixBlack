@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback, useState, forwardRef, useImperativeHandle } from 'react';
-import { zodToJson,splitSentences } from '../utils/utils';
+import { zodToJson,splitSentences,getBrowserFingerprint,encryptData } from '../utils/utils';
 import { useWindowSize } from "@uidotdev/usehooks";
 
 const useRefs = () => {
@@ -21,6 +21,8 @@ const Meeting = forwardRef(({ name, task, rules, outputKey, children, onFinish, 
     const windowSize = useWindowSize();
     const [combinedRules, setCombinedRules] = useState(''); // concatentated rules for the experts
     const [inProgress, setInProgress] = useState(false);
+    const [settings, setSettings] = useState({}); // encrypted settings for the meeting (ex. apikeys) 
+    const [encryptedKey, setEncryptedKey] = useState(''); // encryption key for secure communication with backend
     const [transcript, setTranscript] = useState([]);
     const addTranscript = (speaker,message,type='thought',role='coordinator') => {
         let obj = { speaker, role, type, message };
@@ -81,21 +83,6 @@ const Meeting = forwardRef(({ name, task, rules, outputKey, children, onFinish, 
                 }
             }
             setCombinedRules(rules_);
-            // add rules to each expert backstory
-            Object.keys(refs.current).forEach(refName => {
-                if (refs.current[refName] && refs.current[refName].meta) {
-                    const meta = refs.current[refName].meta();
-                    const avatar_id = refs.current[refName].getID();  // trick to get the ID of the agent
-                    if (meta.type === 'expert') {
-                        meta.avatar_id = avatar_id;
-                        meta.backstory = `# Always follow the following rules in your responses:\n\n${rules_}\n\n${meta.backstory}`
-                        setExperts(prev => {
-                            return { ...prev, [meta.name+'|'+meta.role]: meta };
-                        })
-                    }
-                }
-            });
-            //
         }
         process();
     }, [rules])
@@ -185,9 +172,17 @@ const Meeting = forwardRef(({ name, task, rules, outputKey, children, onFinish, 
         onDialog && onDialog(transcript);
     },[transcript])
 
+    const sentToBackend = async(payload) => {
+        if (websocketRef.current && websocketRef.current.readyState === WebSocket.OPEN) {
+            websocketRef.current.send(JSON.stringify(payload));
+            console.log('Request sent:', payload);
+        }
+    };
+
     // Expose Meeting's methods to parent through ref
     useImperativeHandle(refMain, () => ({
         getTranscript: () => transcript,    // for parent to get the transcript
+        setSettings: (settings) => setSettings(settings), // for parent to set the settings
         start: async(context,schema)=>{
             // start meeting with given context, and zod output schema
             // 1. build a JSON of the meeting info + children JSON info + zod schema JSON
@@ -197,17 +192,20 @@ const Meeting = forwardRef(({ name, task, rules, outputKey, children, onFinish, 
                     meta: {
                         context,
                         schema: zodToJson(schema),
-                        name, task
+                        name, task, rules: combinedRules
                     },
                     experts
                 };
+                // send the userId if there is something on settings
+                if (Object.keys(settings).length > 0) {
+                    payload.fingerprint = await getBrowserFingerprint();
+                    // if fingerprint exists, then backend will return an encryptionKey evt
+                }
+                //
                 addTranscript('Fenix',`The user has given us the following task: '${payload.meta.task}'`,'says','Meeting Coordinator');
                 //console.log('payload',payload);
                 // send to backend
-                if (websocketRef.current && websocketRef.current.readyState === WebSocket.OPEN) {
-                    websocketRef.current.send(JSON.stringify(payload));
-                    console.log('Request sent:', payload);
-                }
+                await sentToBackend(payload);
             }
             // 2. connect to backend via websocket and send data
             const handleMessage = async(event) => {
@@ -222,6 +220,15 @@ const Meeting = forwardRef(({ name, task, rules, outputKey, children, onFinish, 
                 // if obj is string
                 if (typeof obj === 'string' &&  obj === 'KEEPALIVE') { //ignore keepalive events
                     console.log('Received keepalive event.');
+                } else if (obj?.action === 'encryptionKey') {
+                    // if we get here is because we sent a 'fingerprint'
+                    setEncryptedKey(obj.key);
+                    // send settings object, encrypted, to backend
+                    await sentToBackend({
+                        cmd: 'settings',
+                        settings: encryptData(settings)
+                    });
+
                 } else if (obj?.action === 'server_status') {
                 } else if (obj?.action === 'creating_expert') {
                     // in_progress when creating expert

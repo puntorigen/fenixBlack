@@ -1,5 +1,18 @@
 import { omit } from 'lodash';
 import zodToJsonSchemaImpl from 'zod-to-json-schema';
+import FingerprintJS from '@fingerprintjs/fingerprintjs';
+import CryptoJS from 'crypto-js';
+
+export async function getBrowserFingerprint() {
+    const fp = await FingerprintJS.load();
+    const result = await fp.get();
+    const userId = result.visitorId;
+    return userId;
+}
+
+export function encryptData(data, key) {
+    return CryptoJS.AES.encrypt(JSON.stringify(data), key).toString();
+}
 
 export function zodToJson(schema) {
     return omit(

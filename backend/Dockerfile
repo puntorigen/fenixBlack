@@ -21,6 +21,9 @@ RUN pip install --upgrade "embedchain[dataloaders]"
 RUN pip install --upgrade "pinecone-client"
 RUN pip install --upgrade "pinecone-text"
 #RUN pip install --no-cache-dir embedchain
+# for secure data exchange with frontend
+RUN pip install pycryptodome
+
 
 # Set the working directory
 WORKDIR /app
