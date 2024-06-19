@@ -13,14 +13,16 @@ export function encryptData(data, key) {
     const iv = CryptoJS.lib.WordArray.random(128 / 8); // Generate a random 16-byte IV.
     const dataString = JSON.stringify(data);
 
-    const encrypted = CryptoJS.AES.encrypt(dataString, CryptoJS.enc.Utf8.parse(key), {
+    const keyWordArray = CryptoJS.enc.Base64.parse(key); // Parse the key from Base64 if stored/transmitted in Base64
+    const encrypted = CryptoJS.AES.encrypt(dataString, keyWordArray, {
         iv: iv,
         mode: CryptoJS.mode.CBC,
         padding: CryptoJS.pad.Pkcs7
-    });
+    }); 
 
-    // Convert the IV and the ciphertext to a single Base64 string:
-    const encryptedData = CryptoJS.enc.Base64.stringify(iv.concat(encrypted.ciphertext));
+    // Combine the IV and the encrypted data, then encode to Base64
+    const combined = iv.concat(encrypted.ciphertext);
+    const encryptedData = CryptoJS.enc.Base64.stringify(combined);
     return encryptedData;
 }
 

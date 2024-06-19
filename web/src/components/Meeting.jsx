@@ -21,7 +21,16 @@ const Meeting = forwardRef(({ name, task, rules, outputKey, children, onFinish, 
     const windowSize = useWindowSize();
     const [combinedRules, setCombinedRules] = useState(''); // concatentated rules for the experts
     const [inProgress, setInProgress] = useState(false); 
-    const [settings, setSettings] = useState({ test:'Pablo' }); // encrypted settings for the meeting (ex. apikeys) 
+    const [settings, setSettings] = useState({ // all the settings here are sent encrypted
+        env: {
+            // set your own keys here -> they'll be sent encrypted to the backend
+            OPENAI_API_KEY: '',
+            SERPER_API_KEY: '',
+            PINECONE_API_KEY: '',
+            // test env
+            TEST_API: '2989f-dfjdf8-222'
+        } 
+     }); // encrypted settings for the meeting (ex. apikeys) 
     const [sessionKey, setSessionKey] = useState(''); // session key for secure communication with backend
     const [fingerprint, setFingerprint] = useState(''); // unique user fingerprint (or userid)
     const [transcript, setTranscript] = useState([]);
@@ -90,8 +99,13 @@ const Meeting = forwardRef(({ name, task, rules, outputKey, children, onFinish, 
 
     useEffect(() => {
         // Log meta information from children
+        const init = async() => {
+            const result = await getBrowserFingerprint();
+            setFingerprint(result);
+        };
         setTranscript([]);
         addTranscript('Fenix',`Hi my name is Fenix and I'm the Meeting Coordinator. My goal is to 'help the team coordinate tasks between team members and query customer data'.`,'intro','Meeting Coordinator');
+        // prepare the children nodes
         const parseChildren = () => {
             Object.keys(refs.current).forEach(refName => {
                 if (refs.current[refName] && refs.current[refName].meta) {
@@ -108,14 +122,15 @@ const Meeting = forwardRef(({ name, task, rules, outputKey, children, onFinish, 
             });
         }
         parseChildren();
+        init();
         // Clean up WebSocket connection when component unmounts
         return () => {
-            if (websocketRef.current) {
+            if (websocketRef.current) { 
                 websocketRef.current.close();
             }
         };
     }, []); // Ensure it runs whenever children change
- 
+
     const enhancedChildren = React.Children.map(children, (child, index) =>
         React.cloneElement(child, { ...child.props, style:{ marginLeft: '20px' }, id:`field-${index}` ,ref: (ref)=>register(`field-${index}`,ref) })
     );
@@ -191,10 +206,9 @@ const Meeting = forwardRef(({ name, task, rules, outputKey, children, onFinish, 
                 // init connection by sending a request for a session key
                 // exchange with server the fingerprint and get the session_key, so we can encrypt the settings
                 // request session_key to server
-                setFingerprint(await getBrowserFingerprint());
                 await sentToBackend({
                     cmd: 'req_session_key',
-                    fingerprint
+                    fingerprint 
                 });
             }
             // 2. connect to backend via websocket and send data
@@ -212,19 +226,19 @@ const Meeting = forwardRef(({ name, task, rules, outputKey, children, onFinish, 
                     console.log('Received keepalive event.');
                 } else if (obj?.action === 'session_key') {
                     // when the server sends the session key, we can now encrypt data
-                    setSessionKey(obj.key); // we need this key to encrypt the data before sending it
                     // request meeting launch
                     let payload = {
                         cmd: 'create_meeting',
                         meta: {
                             context,
                             schema: zodToJson(schema),
-                            name, task, rules: combinedRules
+                            name, task, rules: combinedRules 
                         }, 
                         experts,
-                        settings: encryptData(settings, sessionKey),
-                        fingerprint
-                    };
+                        settings: encryptData(settings, obj.key),
+                        fingerprint 
+                    }; 
+                    setSessionKey(obj.key); // we need this key to encrypt the data before sending it
                     addTranscript('Fenix',`The user has given us the following task: '${payload.meta.task}'`,'says','Meeting Coordinator');
                     await sentToBackend(payload);
 

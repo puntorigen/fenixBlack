@@ -7,7 +7,7 @@ from Crypto.Cipher import AES
 import asyncio
 
 from meeting import Meeting
-from utils.cypher import get_encryption_key, decryptJSON
+from utils.cypher import get_encryption_key_base64, decryptJSON
 
 #from db.models import Session
 #from db.database import Database
@@ -55,7 +55,7 @@ async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
                 # first cmd to be received
                 # for secure exchange of data
                 # @TODO save it in the database related to the fingerprint (Sessions model)
-                encryption_key = get_encryption_key(from_frontend["fingerprint"])
+                encryption_key = get_encryption_key_base64(from_frontend["fingerprint"])
                 await manager.send_message(json.dumps({
                     "action": "session_key",
                     "key": encryption_key 
@@ -67,10 +67,12 @@ async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
                 try:
                     if from_frontend["settings"]:
                         from_frontend["settings"] = decryptJSON(from_frontend["settings"], from_frontend["fingerprint"])
+                        print(f"DEBUG settings: {from_frontend['settings']}")
+                    
                 except Exception as e:
                     # error decrypting settings, abort meeting creation
                     print(f"Error decrypting settings: {str(e)}")
-                    break
+                    raise 
 
                 current_meeting = Meeting(
                     manager=manager,

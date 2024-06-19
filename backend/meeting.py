@@ -294,9 +294,11 @@ class Meeting:
 
         # if self.settings include 'env' then set the environment variables for this thread
         if self.settings and "env" in self.settings:
-            for key in self.settings["env"]:
+            for key in self.settings["env"]: 
                 if key != "SERVER_KEY":
                     os.environ[key] = self.settings["env"][key]
+                    #print("DEBUG Setting env variable",key,self.settings["env"][key])
+
         # create experts
         for expert in self.experts_:
             expert_json = ExpertModel(**self.experts_[expert])
