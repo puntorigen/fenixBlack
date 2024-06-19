@@ -24,9 +24,9 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
     const [settings, setSettings] = useState({ // all the settings here are sent encrypted
         env: {
             // set your own keys here -> they'll be sent encrypted to the backend
-            OPENAI_API_KEY: '',
+            /*OPENAI_API_KEY: '',
             SERPER_API_KEY: '',
-            PINECONE_API_KEY: '',
+            PINECONE_API_KEY: '', */
             // test env
             TEST_API: '2989f-dfjdf8-222'
         } 
@@ -195,7 +195,7 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
             websocketRef.current.send(JSON.stringify(payload));
             console.log('Request sent:', payload);
         }
-    };
+    }; 
 
     // Expose Meeting's methods to parent through ref
     useImperativeHandle(refMain, () => ({

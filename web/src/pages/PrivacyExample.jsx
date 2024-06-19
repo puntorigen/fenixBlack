@@ -23,7 +23,7 @@ function PrivacyExample() {
           style={{marginTop:20, color:'yellowgreen' }}
           disabled={inMeeting}
           onClick={async()=>{
-            await privacyPolicy.current.start(testTask,privacyPolicy);
+            await meetingPrivacy.current.start(testTask,privacyPolicy);
             setInMeeting(true);
           }}
         >Start Meeting</WiredButton>
