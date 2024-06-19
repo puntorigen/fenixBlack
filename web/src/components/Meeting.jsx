@@ -20,9 +20,10 @@ const Meeting = forwardRef(({ name, task, rules, outputKey, children, onFinish, 
     const websocketRef = useRef(null);
     const windowSize = useWindowSize();
     const [combinedRules, setCombinedRules] = useState(''); // concatentated rules for the experts
-    const [inProgress, setInProgress] = useState(false);
-    const [settings, setSettings] = useState({}); // encrypted settings for the meeting (ex. apikeys) 
-    const [encryptedKey, setEncryptedKey] = useState(''); // encryption key for secure communication with backend
+    const [inProgress, setInProgress] = useState(false); 
+    const [settings, setSettings] = useState({ test:'Pablo' }); // encrypted settings for the meeting (ex. apikeys) 
+    const [sessionKey, setSessionKey] = useState(''); // session key for secure communication with backend
+    const [fingerprint, setFingerprint] = useState(''); // unique user fingerprint (or userid)
     const [transcript, setTranscript] = useState([]);
     const addTranscript = (speaker,message,type='thought',role='coordinator') => {
         let obj = { speaker, role, type, message };
@@ -186,26 +187,15 @@ const Meeting = forwardRef(({ name, task, rules, outputKey, children, onFinish, 
         start: async(context,schema)=>{
             // start meeting with given context, and zod output schema
             // 1. build a JSON of the meeting info + children JSON info + zod schema JSON
-            const onConnect = async() => {            
-                let payload = {
-                    cmd: 'create_meeting',
-                    meta: {
-                        context,
-                        schema: zodToJson(schema),
-                        name, task, rules: combinedRules
-                    },
-                    experts
-                };
-                // send the userId if there is something on settings
-                if (Object.keys(settings).length > 0) {
-                    payload.fingerprint = await getBrowserFingerprint();
-                    // if fingerprint exists, then backend will return an encryptionKey evt
-                }
-                //
-                addTranscript('Fenix',`The user has given us the following task: '${payload.meta.task}'`,'says','Meeting Coordinator');
-                //console.log('payload',payload);
-                // send to backend
-                await sentToBackend(payload);
+            const onConnect = async() => {
+                // init connection by sending a request for a session key
+                // exchange with server the fingerprint and get the session_key, so we can encrypt the settings
+                // request session_key to server
+                setFingerprint(await getBrowserFingerprint());
+                await sentToBackend({
+                    cmd: 'req_session_key',
+                    fingerprint
+                });
             }
             // 2. connect to backend via websocket and send data
             const handleMessage = async(event) => {
@@ -220,14 +210,23 @@ const Meeting = forwardRef(({ name, task, rules, outputKey, children, onFinish, 
                 // if obj is string
                 if (typeof obj === 'string' &&  obj === 'KEEPALIVE') { //ignore keepalive events
                     console.log('Received keepalive event.');
-                } else if (obj?.action === 'encryptionKey') {
-                    // if we get here is because we sent a 'fingerprint'
-                    setEncryptedKey(obj.key);
-                    // send settings object, encrypted, to backend
-                    await sentToBackend({
-                        cmd: 'settings',
-                        settings: encryptData(settings)
-                    });
+                } else if (obj?.action === 'session_key') {
+                    // when the server sends the session key, we can now encrypt data
+                    setSessionKey(obj.key); // we need this key to encrypt the data before sending it
+                    // request meeting launch
+                    let payload = {
+                        cmd: 'create_meeting',
+                        meta: {
+                            context,
+                            schema: zodToJson(schema),
+                            name, task, rules: combinedRules
+                        }, 
+                        experts,
+                        settings: encryptData(settings, sessionKey),
+                        fingerprint
+                    };
+                    addTranscript('Fenix',`The user has given us the following task: '${payload.meta.task}'`,'says','Meeting Coordinator');
+                    await sentToBackend(payload);
 
                 } else if (obj?.action === 'server_status') {
                 } else if (obj?.action === 'creating_expert') {

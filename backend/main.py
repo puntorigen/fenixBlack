@@ -7,14 +7,15 @@ from Crypto.Cipher import AES
 import asyncio
 
 from meeting import Meeting
+from utils.cypher import get_encryption_key, decryptJSON
 
-#from db.models import Comment, Scanned
+#from db.models import Session
+#from db.database import Database
+#db = Database()
+
 # Configure logging
 #logging.basicConfig(level=logging.INFO)
 #logger = logging.getLogger(__name__)
-
-#db = Database()
-#schemas = None
 
 def setup():
     openai_api_key = os.getenv('OPENAI_API_KEY')
@@ -50,12 +51,33 @@ async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
             # TODO: detect command from frontend first
             if not from_frontend["cmd"]: 
                 break
-            if from_frontend["cmd"] == "create_meeting":
+            if from_frontend["cmd"] == "req_session_key":
+                # first cmd to be received
+                # for secure exchange of data
+                # @TODO save it in the database related to the fingerprint (Sessions model)
+                encryption_key = get_encryption_key(from_frontend["fingerprint"])
+                await manager.send_message(json.dumps({
+                    "action": "session_key",
+                    "key": encryption_key 
+                }), meeting_id)
+                #session = Session(fingerprint=from_frontend["fingerprint"], encryption_key=encryption_key)
+                #db.add(session)
+
+            elif from_frontend["cmd"] == "create_meeting":
+                try:
+                    if from_frontend["settings"]:
+                        from_frontend["settings"] = decryptJSON(from_frontend["settings"], from_frontend["fingerprint"])
+                except Exception as e:
+                    # error decrypting settings, abort meeting creation
+                    print(f"Error decrypting settings: {str(e)}")
+                    break
+
                 current_meeting = Meeting(
                     manager=manager,
                     experts=from_frontend["experts"],
                     meeting_id=meeting_id,
-                    meta=from_frontend["meta"]
+                    meta=from_frontend["meta"],
+                    settings=from_frontend["settings"]
                 )
                 meet = await asyncio.to_thread(current_meeting.launch_task)
                 meet.loop.stop()

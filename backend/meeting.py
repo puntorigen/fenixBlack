@@ -5,6 +5,7 @@ from schemas import TaskContext, ExpertModel, ImprovedTask
 
 from textwrap import dedent
 from utils.utils import json2pydantic, MyBaseModel
+from utils.cypher import decryptJSON
 import json, os, asyncio
 
 import instructor
@@ -28,9 +29,9 @@ client_instructor_sync = instructor.apatch(OpenAI(api_key=os.getenv("OPENAI_API_
 
 
 class Meeting:
-    def __init__(self, manager, experts, meeting_id, meta):
+    def __init__(self, manager, experts, meeting_id, meta, settings):
         self.tool_name_map = {} # map tool names to tool ids
-        self.manager = manager
+        self.manager = manager 
         self.loop = None
 
         self.meeting_id = meeting_id
@@ -41,6 +42,8 @@ class Meeting:
         self.context = meta["context"]
         self.task = meta["task"]
         self.schema = meta["schema"]
+
+        self.settings = settings # encrypted settings
 
     async def send_data(self, data): 
         try:
@@ -287,8 +290,14 @@ class Meeting:
         # build a better description for the task using the task context, name and task
         # let frontend kwnow that the task is being created/thinked
         self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-        
+        asyncio.set_event_loop(self.loop) 
+
+        # if self.settings include 'env' then set the environment variables for this thread
+        if self.settings and "env" in self.settings:
+            for key in self.settings["env"]:
+                if key != "SERVER_KEY":
+                    os.environ[key] = self.settings["env"][key]
+        # create experts
         for expert in self.experts_:
             expert_json = ExpertModel(**self.experts_[expert])
             expert_ = self.create_expert(expert=expert_json)

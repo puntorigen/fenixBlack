@@ -1,7 +1,7 @@
 from typing import Optional, List, Type, TypeVar
 from sqlmodel import Session, SQLModel, create_engine, select
 
-DATABASE_URL = "sqlite:///records.db"
+DATABASE_URL = "sqlite:///server.db"
 T = TypeVar("T", bound=SQLModel)
 
 class Database:

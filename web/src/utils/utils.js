@@ -5,13 +5,23 @@ import CryptoJS from 'crypto-js';
 
 export async function getBrowserFingerprint() {
     const fp = await FingerprintJS.load();
-    const result = await fp.get();
-    const userId = result.visitorId;
-    return userId;
+    const { visitorId } = await fp.get();
+    return visitorId;
 }
 
 export function encryptData(data, key) {
-    return CryptoJS.AES.encrypt(JSON.stringify(data), key).toString();
+    const iv = CryptoJS.lib.WordArray.random(128 / 8); // Generate a random 16-byte IV.
+    const dataString = JSON.stringify(data);
+
+    const encrypted = CryptoJS.AES.encrypt(dataString, CryptoJS.enc.Utf8.parse(key), {
+        iv: iv,
+        mode: CryptoJS.mode.CBC,
+        padding: CryptoJS.pad.Pkcs7
+    });
+
+    // Convert the IV and the ciphertext to a single Base64 string:
+    const encryptedData = CryptoJS.enc.Base64.stringify(iv.concat(encrypted.ciphertext));
+    return encryptedData;
 }
 
 export function zodToJson(schema) {

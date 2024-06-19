@@ -22,7 +22,7 @@ RUN pip install --upgrade "pinecone-client"
 RUN pip install --upgrade "pinecone-text"
 #RUN pip install --no-cache-dir embedchain
 # for secure data exchange with frontend
-RUN pip install pycryptodome
+RUN pip install pycryptodome secrets
 
 
 # Set the working directory
