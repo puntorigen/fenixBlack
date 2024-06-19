@@ -14,7 +14,7 @@ const useRefs = () => {
     return [ refs, register ];
 };
 
-const Meeting = forwardRef(({ name, task, rules, outputKey, children, onFinish, onError, onDialog }, refMain) => {
+const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinish, onError, onDialog }, refMain) => {
     const [refs, register] = useRefs();
     const [experts, setExperts] = useState({});
     const websocketRef = useRef(null);
@@ -77,22 +77,24 @@ const Meeting = forwardRef(({ name, task, rules, outputKey, children, onFinish, 
                 return { text:rules__, last_idx:currentIdx };
             }
             // loop and count index
-            let realIdx = 0;
-            for (let idx=0; idx < rules.length; idx++) {
-                const rule = rules[idx];
-                if (rule.startsWith('http')) {
-                    const text = await downloadRule(rule);
-                    let rules_obj = text2rules(text, realIdx+1);
-                    realIdx = rules_obj.last_idx;
-                    rules_ += rules_obj.text;
-                } else { 
-                    const text = await downloadRule(rule);
-                    let rules_obj = text2rules(text, realIdx+1);
-                    realIdx = rules_obj.last_idx;
-                    rules_ += rules_obj.text;
+            if (rules && Array.isArray(rules) && rules.length > 0) {
+                let realIdx = 0;
+                for (let idx=0; idx < rules.length; idx++) {
+                    const rule = rules[idx];
+                    if (rule.startsWith('http')) {
+                        const text = await downloadRule(rule);
+                        let rules_obj = text2rules(text, realIdx+1);
+                        realIdx = rules_obj.last_idx;
+                        rules_ += rules_obj.text;
+                    } else { 
+                        const text = await downloadRule(rule);
+                        let rules_obj = text2rules(text, realIdx+1);
+                        realIdx = rules_obj.last_idx;
+                        rules_ += rules_obj.text;
+                    }
                 }
+                setCombinedRules(rules_);
             }
-            setCombinedRules(rules_);
         }
         process();
     }, [rules])

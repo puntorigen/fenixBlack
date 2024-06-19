@@ -22,6 +22,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-nice-avatar": "^1.5.0",
+    "react-router-dom": "^6.23.1",
     "react-scripts": "5.0.1",
     "react-text-to-speech": "^0.15.3",
     "react-wired-elements": "^0.1.6",
