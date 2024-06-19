@@ -44,14 +44,13 @@ function PrivacyExample() {
           <Lawyer study={ //learns the given data before starting the meeting
             ['https://ico.org.uk/media/for-organisations/guide-to-the-general-data-protection-regulation-gdpr-1-0.pdf']
           } />
-        </Meeting> 
-        {/*
+        </Meeting>
         <WiredCard elevation={2} style={{marginBottom:100, color:'white', textAlign:'left', width:'80%' }}>
         <h2>Meeting Transcription</h2>
         <span style={{ fontFamily:'sans-serif' }}>
           {dialog && dialog.map((d,i)=><p key={i}>{d.full}</p>)}
         </span>
-        </WiredCard> */}
+        </WiredCard>
         </>
     );
 }

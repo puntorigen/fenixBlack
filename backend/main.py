@@ -72,7 +72,7 @@ async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
                 except Exception as e:
                     # error decrypting settings, abort meeting creation
                     print(f"Error decrypting settings: {str(e)}")
-                    raise 
+                    raise
 
                 current_meeting = Meeting(
                     manager=manager,
