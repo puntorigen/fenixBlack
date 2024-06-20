@@ -65,7 +65,7 @@ async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
 
             elif from_frontend["cmd"] == "create_meeting":
                 try:
-                    if from_frontend["settings"]:
+                    if from_frontend["settings"]: 
                         from_frontend["settings"] = decryptJSON(from_frontend["settings"], from_frontend["fingerprint"])
                         print(f"DEBUG settings: {from_frontend['settings']}")
                     

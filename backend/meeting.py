@@ -424,22 +424,38 @@ class Meeting:
         return self
 
     def vector_config(self, keyword="youtube"):
+        # TODO: check if we have PINECONE_API_KEY in the environment and if not return chroma config
+        pinecone_api_key = os.getenv('PINECONE_API_KEY', '').strip()
+        if pinecone_api_key:
+            return {
+                "app": {
+                    "config": {
+                        "name": f"{keyword}_pinecone",
+                    }
+                },
+                "vectordb" : {
+                    "provider": "pinecone",
+                    "config": {
+                        "metric": "cosine",
+                        "vector_dimension": 1536, 
+                        "index_name": f"fenix-black-test",
+                    } 
+                },
+            }
+        # default is chroma vectordb config
         return {
             "app": {
                 "config": {
-                    "name": f"{keyword}_pinecone",
+                    "name": f"{keyword}_chroma",
                 }
             },
             "vectordb" : {
-                "provider": "pinecone",
+                "provider": "chroma",
                 "config": {
-                    "metric": "cosine",
-                    "vector_dimension": 1536, 
-                    "index_name": f"fenix-black-test",
-                    #"serverless_config": {
-                    #    "cloud": "aws",
-                    #    "region": "us-west-2",
-                    #}
+                    "collection_name": "fenix-black-meeting",
+                    "dir": "meetings-data",
+                    "allow_reset": True,
+                    #"vector_dimension": 1536, # openai embeddings
                 } 
             },
         }

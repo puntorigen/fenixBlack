@@ -28,12 +28,16 @@ function BrandExample() {
           onClick={async()=>{
             //await privacyPolicy.current.start('Create a review for propertyradar.com',privacyPolicy);
             setInMeeting(true);
-            meetingBrand.current.setSettings({
+            let settings = {
               env: {
-                TEST_API: 'Testing API Key',
+                // set your own keys here -> they'll be sent encrypted to the backend
+                OPENAI_API_KEY: '', // for the experts to work
+                SERPER_API_KEY: '', // for searching the internet
+                PINECONE_API_KEY: '', // for using it as the vectorDB
               } 
-            }); // set encrypted settings, like API keys
-            await meetingBrand.current.start(testTask,brandSchema);
+            };
+            settings = {};
+            await meetingBrand.current.start(testTask,brandSchema,settings);
             //meetingBrand.current.play();
           }}
         >Start Meeting</WiredButton>

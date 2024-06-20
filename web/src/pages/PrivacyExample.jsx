@@ -4,12 +4,11 @@ import { brandSchema, brochureSchema, privacyPolicy } from '../schemas';
 
 import Meeting from '../components/Meeting';
 import AccountManager from '../experts/AccountManager';
-import Designer from '../experts/Designer';
 import Lawyer from '../experts/Lawyer';
 
 function PrivacyExample() {
     const meetingPrivacy = useRef(null); 
-    const [testTask, setTestTask] = useState('Check if www.enecon.com complies with GPDR');
+    const [testTask, setTestTask] = useState('Check www.enecon.com');
     const [inMeeting, setInMeeting] = useState(false);
     const [dialog, setDialog] = useState([]);
     return (
@@ -22,9 +21,17 @@ function PrivacyExample() {
         <WiredButton 
           style={{marginTop:20, color:'yellowgreen' }}
           disabled={inMeeting}
-          onClick={async()=>{
-            await meetingPrivacy.current.start(testTask,privacyPolicy);
-            setInMeeting(true);
+          onClick={async()=>{ 
+            await meetingPrivacy.current.start(
+                testTask,
+                privacyPolicy,
+                {
+                    env: {
+                        PINECONE_API_KEY: '', // if empty, tries to use chroma instead
+                    } 
+                }
+            );
+            setInMeeting(true); 
           }}
         >Start Meeting</WiredButton>
         
@@ -40,7 +47,6 @@ function PrivacyExample() {
             setInMeeting(false);
           }}>
           <AccountManager name="Mauricio" />
-          <Designer />
           <Lawyer study={ //learns the given data before starting the meeting
             ['https://ico.org.uk/media/for-organisations/guide-to-the-general-data-protection-regulation-gdpr-1-0.pdf']
           } />

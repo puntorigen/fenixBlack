@@ -21,16 +21,7 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
     const windowSize = useWindowSize();
     const [combinedRules, setCombinedRules] = useState(''); // concatentated rules for the experts
     const [inProgress, setInProgress] = useState(false); 
-    const [settings, setSettings] = useState({ // all the settings here are sent encrypted
-        env: {
-            // set your own keys here -> they'll be sent encrypted to the backend
-            /*OPENAI_API_KEY: '',
-            SERPER_API_KEY: '',
-            PINECONE_API_KEY: '', */
-            // test env
-            TEST_API: '2989f-dfjdf8-222'
-        } 
-     }); // encrypted settings for the meeting (ex. apikeys) 
+    const [settings_, setSettings_] = useState({}); // all the settings here are sent encrypted
     const [sessionKey, setSessionKey] = useState(''); // session key for secure communication with backend
     const [fingerprint, setFingerprint] = useState(''); // unique user fingerprint (or userid)
     const [transcript, setTranscript] = useState([]);
@@ -197,13 +188,19 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
         }
     }; 
 
+    useEffect(() => {
+        console.log('Updated settings:', settings_);
+    }, [settings_]);
+
     // Expose Meeting's methods to parent through ref
-    useImperativeHandle(refMain, () => ({
+    useImperativeHandle(refMain, () => ({ 
         getTranscript: () => transcript,    // for parent to get the transcript
-        setSettings: (settings) => setSettings(settings), // for parent to set the settings
-        start: async(context,schema)=>{
+        start: async(context,schema,settings)=>{
             // start meeting with given context, and zod output schema
             // 1. build a JSON of the meeting info + children JSON info + zod schema JSON
+            if (settings) { 
+                setSettings_((prev)=>{ return { ...prev, ...settings } });
+            } 
             const onConnect = async() => {
                 // init connection by sending a request for a session key
                 // exchange with server the fingerprint and get the session_key, so we can encrypt the settings
@@ -237,7 +234,7 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
                             name, task, rules: combinedRules 
                         }, 
                         experts,
-                        settings: encryptData(settings, obj.key),
+                        settings: encryptData(settings?settings:{}, obj.key),
                         fingerprint 
                     }; 
                     setSessionKey(obj.key); // we need this key to encrypt the data before sending it
