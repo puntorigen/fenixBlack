@@ -23,7 +23,7 @@ const Designer = forwardRef(({
         specializing in UX/UI and brand identity guidelines, you search all the needed information 
         from the internet to create the best design guidelines, paying special attention into crafting 
         design related search queries, and adapting the responses to use 
-        materials a developer can understand. 
+        materials a developer can understand. Use preferably tools that use vision over text.
         # We cannot send emails to the client nor call them to ask for more information, so based all your responses on what you can find online and from your peers.`,
         collaborate: true,
         avatar: {  
@@ -38,16 +38,17 @@ const Designer = forwardRef(({
             facialHairStyle: avatar.facialHairStyle.none,
             glassesStyle: avatar.glassesStyle.none,
             eyebrowsStyle: avatar.eyebrowsStyle.eyelashesUp,
-            speakSpeed: 500,
+            speakSpeed: 800,
             blinkSpeed: 3000,
         },
         tools: { // defines animations and which tools are available for this agent
-            [tools.search]: { 'searching':'Searching websites for more information.' },
-            [tools.website_search]: { 'searching':'Searching website for more information.' },
+            //[tools.search]: { 'searching':'Searching websites for more information.' },
+            //[tools.website_search]: { 'searching':'Searching website for more information.' },
             [tools.scrape]: { 'analyzing:#FFFFFF': 'Understanding the design ..' },
-            [tools.pdf_reader]: { 'pdf_reader': 'Reading pdf ..' },
+            [tools.pdf_reader]: { 'pdf_reader': 'Reading pdf ..' }, 
             [tools.youtube_video_search]: { 'reading': 'Searching on youtube video transcription ..' },
-        },
+            [tools.query_website_screenshot]: { 'camera': 'Querying webpage visually ..' },
+        }, 
         study: study
     };
 

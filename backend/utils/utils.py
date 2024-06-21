@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field, create_model
 from typing import Any, Dict, List, Type, Optional
+import re
 
 class MyBaseModel(BaseModel):
     def model_dump(self):
@@ -55,5 +56,33 @@ def json2pydantic(json_schema: Dict[str, Any]) -> Type[BaseModel]:
 
     return create_pydantic_model(json_schema)
 
-#DynamicModel = json2pydantic(schema)
+#DynamicModel = json2pydantic(schema) 
 #print(DynamicModel.schema_json(indent=2))
+
+def extract_sections(text: str) -> dict:
+    # Define the regular expression patterns to match each section
+    thought_pattern = re.compile(r'Thought:\s*(.*?)(?=\nAction:|\Z)', re.DOTALL)
+    action_pattern = re.compile(r'Action:\s*(.*?)(?=\nAction Input:|\Z)', re.DOTALL)
+    action_input_pattern = re.compile(r'Action Input:\s*(.*?)(?=\n|\Z)', re.DOTALL)
+    
+    # Initialize the result dictionary
+    result = {
+        "Thought": None,
+        "Action": None,
+        "Action Input": None
+    }
+    
+    # Search for each pattern in the given text
+    thought_match = thought_pattern.search(text)
+    action_match = action_pattern.search(text)
+    action_input_match = action_input_pattern.search(text)
+    
+    # If matches are found, assign the extracted content to the corresponding dictionary keys
+    if thought_match:
+        result["Thought"] = thought_match.group(1).strip()
+    if action_match:
+        result["Action"] = action_match.group(1).strip()
+    if action_input_match:
+        result["Action Input"] = action_input_match.group(1).strip()
+    
+    return result

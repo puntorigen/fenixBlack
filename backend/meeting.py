@@ -4,9 +4,9 @@ from utils.LLMs import get_llm, get_max_num_iterations
 from schemas import TaskContext, ExpertModel, ImprovedTask
 
 from textwrap import dedent
-from utils.utils import json2pydantic, MyBaseModel
+from utils.utils import json2pydantic, MyBaseModel, extract_sections
 from utils.cypher import decryptJSON
-import json, os, asyncio
+import json, os, asyncio, dirtyjson, re
 
 import instructor
 from openai import AsyncOpenAI, OpenAI
@@ -33,13 +33,13 @@ class Meeting:
         self.tool_name_map = {} # map tool names to tool ids
         self.manager = manager 
         self.loop = None
-
+ 
         self.meeting_id = meeting_id
         self.experts = []
         self.experts_ = experts
         self.meta = TaskContext(**meta) # full meta data
         self.name = meta["name"] # TODO refactor code below to use self.meta["key"] instead
-        self.context = meta["context"]
+        self.context = meta["context"] 
         self.task = meta["task"]
         self.schema = meta["schema"]
 
@@ -55,6 +55,12 @@ class Meeting:
     def adaptTextToPersonality(self, text: str, expert: ExpertModel):
         from typing import Dict, Optional
         from pydantic import BaseModel, Field
+        rules = ""
+        #if self.meta.rules:
+        #    rules = dedent(f"""
+        #        # You must also always follow the rules given by the user, which are:
+        #        ```{self.meta.rules}```
+        #    """)
         class AdaptedStyle(BaseModel):
             new_text: str = Field(None, description="New text adapted to the given personality using a maximum of 140 characters.")
         
@@ -67,11 +73,14 @@ class Meeting:
                     # Consider the following personality instruction for adapting the text:
                     ```{expert.personality}```
 
+                    {rules}
                     # adapt the following text to the given personality: 
                     ```{text}``` 
+
+                    # always use We instead of You, and use present continuous tense if 'you' are performing something.
                 """)},
             ],
-            temperature=0.2,
+            temperature=0.7,
             stream=False,
         )
         print("Adapted TEXT FOR PERSONALITY: ", adaptText.model_dump())
@@ -113,11 +122,14 @@ class Meeting:
                             action_["tool_input"] = action.tool_input
                         if action.log:
                             action_["log"] = action.log
+                            # filter the log to just include the 'Thought:' part if available
+                            action_["thought"] = extract_sections(action.log)
+
                         step_object.append({ "type":"tool", "data":action_ }) #str(action)
 
                     observation_ = {}
                     observation_["lines"] = []
-                    observation_["lines_raw"] = []
+                    observation_["lines_raw"] = [] 
                     if isinstance(observation, str):
                         observation_lines = observation.split('\n')
                         observation_["lines_raw"] = observation_lines
@@ -161,8 +173,29 @@ class Meeting:
                     expert_action["tool_id"] = step["data"]["tool_id"]
                     expert_action["tool_input"] = step["data"]["tool_input"]
                     expert_action["speak"] = step["data"]["log"]
+                    # re-format if step["data"]["thought"]["Thought"] is not empty
+                    if step["data"]["thought"] and step["data"]["thought"]["Thought"]:
+                        expert_action["speak"] = step["data"]["thought"]["Thought"]
+                        expert_action["kind"] = "thought"
                     break
-            # TODO: if expert.personality is not empty and expert_action is not empty
+            
+            # create thought version if necessary
+            if expert_action["kind"] == "":
+                for step in step_object:
+                    if step["type"] == "response_str" and step["data"]:
+                        expert_action["kind"] = "thought"
+                        expert_action["valid"] = True
+                        expert_action["speak"] = step["data"]
+                        try:
+                            as_json_test = dirtyjson.loads(step["data"])
+                            expert_action["speak"] = as_json_test.output
+                        except Exception as e:
+                            pass
+                        # if expert_action["speak"] is just a word, then valid=False
+                        if len(expert_action["speak"].split()) == 1:
+                            expert_action["valid"] = False
+                
+            # if expert.personality is not empty and expert_action is not empty
             if expert.personality and expert_action["valid"]:
                 # adapt the expert_action to the expert's personality
                 if expert_action["speak"]:
@@ -171,10 +204,11 @@ class Meeting:
                         adapted_ = self.adaptTextToPersonality(speak_text, expert)
                         expert_action["speak"] = adapted_
                     except Exception as e2: 
-                        print("DEBUG: adaptTextToPersonality ERROR",e2)
+                        print("DEBUG: adaptTextToPersonality ERROR3",e2)
                         expert_action["speak"] = ". ".join(expert_action["speak"]) + "." # convert list to string
                 else:
                     expert_action["speak"] = "" # convert list to string
+
             #else:
             #    expert_action["speak"] = ". ".join(expert_action["speak"]) + "." # convert list to string
             #expert_action["speak"] = ". ".join(expert_action["speak"]) + "." # convert list to string
@@ -226,8 +260,8 @@ class Meeting:
         if expert.study:
             for url in expert.study:
                 rag_tool = self.get_study_tool(url)
-                if rag_tool is not None:
-                    self.tool_name_map[tool.name] = 'study'
+                if rag_tool is not None: 
+                    self.tool_name_map[rag_tool.name] = 'study'
                     tools.append(rag_tool)
 
         # create report specific for Expert
@@ -279,7 +313,7 @@ class Meeting:
             """),
             backstory=improvedTask.coordinator_backstory,
             allow_delegation=True,
-            verbose=True,
+            verbose=True, 
             max_iter=get_max_num_iterations(10),
             llm=get_llm("gpt-4o"),
             tools=[],
@@ -311,25 +345,35 @@ class Meeting:
         })
         experts = self.experts
         task = self.meta
+        rules = ""
+        # add rules to the task description and if they are not empty
+        if self.meta.rules:
+            rules = dedent(f"""
+                # You must also always follow the rules given by the user, which are:
+                ```{self.meta.rules}```
+            """)
         # TODO: create instructor call here
         try:
             improved = client_instructor_sync.chat.completions.create(
                 model="gpt-4",
                 response_model=ImprovedTask, 
                 messages=[
-                    {"role": "system", "content": "# act as an expert prompt engineer. Consider the following JSON object as the context for writing an easier to understand task 'description' that a junior analyst can understand, and a clear 'expected_output' field that describes the expected data output from the given schema in a couple of paragraphs."},
+                    {"role": "system", "content": "# act as an expert prompt engineer. Consider the following JSON object as the context for writing an easier to understand task 'description' that a junior analyst can understand, and a clear 'expected_output' field that describes the expected data output from the given schema in a couple of paragraphs. Check everything prior to sharing with me to ensure accuracy. You only have one shot, so take your time and think step by step."},
                     {"role": "user", "content": dedent(f"""
                         # Use the following JSON schema to understand the expected_output:
                         ```{json.dumps(task.schema)}```
 
                         # It's most important that you never loose focus on the task expected to be achieved by the user, which is:
                         ```{task.task}```
-                        # using the following context:
+
+                        # also use the following context:
                         ```{task.context}```
-                    """)},
+
+                        # Now, improve the task description and expected_output fields, also adding a default https schema to any url if not correctly formed:
+                    """)}, 
                 ],
-                temperature=0.02,
-                stream=False,
+                temperature=0.0,
+                stream=False, 
             )
             self.sendDataSync({
                 "action": "improvedTask",
@@ -449,9 +493,9 @@ class Meeting:
                     "name": f"{keyword}_chroma",
                 }
             },
-            "vectordb" : {
+            "vectordb" : { 
                 "provider": "chroma",
-                "config": {
+                "config": { 
                     "collection_name": "fenix-black-meeting",
                     "dir": "meetings-data",
                     "allow_reset": True,
@@ -520,6 +564,9 @@ class Meeting:
         elif tool_id == "youtube_video_search":
             from crewai_tools import YoutubeVideoSearchTool
             return YoutubeVideoSearchTool(config=self.vector_config("youtube")) 
+        elif tool_id == "query_website_screenshot": 
+            from tools import query_visual_website2 
+            return query_visual_website2.QueryVisualWebsite()
         return None
     
     def create_meeting(self, request):

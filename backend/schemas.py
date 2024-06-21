@@ -22,7 +22,8 @@ class Tools(BaseModel):
     website_search: Optional[Dict[str, str]] = Field(None, description="Tool for querying a given website")
     pdf_reader: Optional[Dict[str, str]] = Field(None, description="Tool for reading PDF file contents")
     youtube_video_search: Optional[Dict[str, str]] = Field(None, description="Tool for querying the contents of a youtube video")
-
+    query_website_screenshot: Optional[Dict[str, str]] = Field(None, description="Tool for querying a website url using vision")
+  
 class ExpertModel(BaseModel):
     type: Optional[str] = Field(None, description="Type of the object, e.g., 'expert'")
     name: Optional[str] = Field(None, description="Name of the expert")
@@ -43,9 +44,10 @@ class TaskContext(BaseModel):
     schema: Optional[Dict] = Field(default=None, description="Optional and unrestricted schema dictionary")
     name: str = Field(..., description="The name of the task")
     task: str = Field(..., description="Description of the task")
+    rules: Optional[str] = Field(None, description="Optional set of rules for the task")
 
-class ImprovedTask(BaseModel):
-    description: str = Field(..., description="An easier to understand description for the task to perform")
-    description_first_person: str = Field(..., description="An easier to understand first person description for the task to perform, in present tense and active voice under the 'I' pronoun, using less than 140 characters")
+class ImprovedTask(BaseModel): 
+    description: str = Field(..., description="An easier and accurate description with fixed url schemas if needed, for the task to perform")
+    description_first_person: str = Field(..., description="An easier to understand first person description for the task to perform, and as if you were the team leader in a meeting guiding others, using less than 140 characters")
     expected_output: str = Field(..., description="A description of the expected output for the task")
     coordinator_backstory: str = Field(..., description="A backstory description for a coordinator LLM agent specific for delegating this task")

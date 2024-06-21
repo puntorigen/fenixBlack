@@ -268,9 +268,9 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
                 } else if (obj?.action === 'createTask') {
                     // dummy, update an avatar with the data (just testing)
                     console.log('Received data:', obj);
-                    if (refs.current['field-1']) {
+                    if (refs.current['field-1'] && refs.current['field-1'].speak) {
                         await refs.current['field-1'].speak(obj.data);
-                    }
+                    } 
                 } else if (obj?.action === 'improvedTask') {
                     // gets the improved version of the user task that's going to be used
                     setInProgress(true);
@@ -297,13 +297,30 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
                     if (obj.expert_action) {
                         play.valid = obj.expert_action.valid;
                         play.expert_id = obj.expert_action.expert_id;
-                        play.tool_id = obj.expert_action.tool_id;
-                        play.kind = obj.expert_action.kind;
-                        play.sentences = obj.expert_action.speak.trim();
+                        play.tool_id = obj.expert_action?.tool_id;
+                        play.kind = obj.expert_action?.kind;
+                        play.sentences = obj.expert_action.speak;
+                        if (play.sentences) play.sentences = play.sentences.trim();
+                        if (play.sentences==='') {
+                            play.valid = false;
+                            console.log('DEBUG: EMPTY SENTENCES:',obj);
+                        } 
                     }
                     // only play animation if 'play.valid' is true
-                    if (play.valid === true) {
-                        console.log('DEBUG: TOOL DETECTED:',play,obj,refs.current[play.expert_id]);
+                    if (play.valid === true && play.kind === 'tool') {
+                        console.log('DEBUG: TOOL DETECTED:',obj);
+                        if (refs.current[play.expert_id]) {
+                            await refs.current[play.expert_id].play(play.tool_id);
+                            await refs.current[play.expert_id].speak(play.sentences,400,150,300,async function() {
+                                console.log('meeting->agent speaking done'); 
+                                refs.current[play.expert_id].avatarSize('100%');
+                                await refs.current[play.expert_id].stop();
+                            });
+                            const meta_expert = refs.current[play.expert_id].meta();
+                            addTranscript(meta_expert.name,play.sentences,'says',meta_expert.role);
+                        }
+                    } else if (play.valid === true && play.kind === 'thought') {
+                        console.log('DEBUG: NEW THOUGHT DETECTED:',obj);
                         if (refs.current[play.expert_id]) {
                             await refs.current[play.expert_id].play(play.tool_id);
                             await refs.current[play.expert_id].speak(play.sentences,400,150,300,async function() {
@@ -312,8 +329,8 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
                                 await refs.current[play.expert_id].stop();
                             });
                             const meta_expert = refs.current[play.expert_id].meta();
-                            addTranscript(meta_expert.name,play.sentences,'says',meta_expert.role);
-                        }
+                            addTranscript(meta_expert.name,play.sentences,'thought',meta_expert.role);
+                        } 
                     } else if (play.kind === 'tool') {
                         //console.log('TOOL NOT USED');
                     } else {

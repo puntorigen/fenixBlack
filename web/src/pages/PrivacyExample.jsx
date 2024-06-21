@@ -24,12 +24,7 @@ function PrivacyExample() {
           onClick={async()=>{ 
             await meetingPrivacy.current.start(
                 testTask,
-                privacyPolicy,
-                {
-                    env: {
-                        PINECONE_API_KEY: '', // if empty, tries to use chroma instead
-                    } 
-                }
+                privacyPolicy
             );
             setInMeeting(true); 
           }}

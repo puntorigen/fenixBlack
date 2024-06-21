@@ -58,14 +58,16 @@ function BrandExample() {
             console.log('meeting onFinish called',output);
             setInMeeting(false);
           }}> 
-          <AccountManager name="Mauricio" />
+          {/* 
           <ResearchAnalyst /> 
+          <LeadMarketAnalyst name="Julio" />
+          <AccountManager name="Mauricio" />
+          */}
           <Designer study={[
             'https://blog.logrocket.com/ux-design/30-design-techniques/',
             'https://assets.ctfassets.net/uha7v3hw004j/4FuCRjBFe4mtOBU236eNyZ/5bdbf5f91949a26138bf6d6c1ed23dcc/ColorPaletteGuide_2020_HighContrast.pdf',
             'https://cdn2.hubspot.net/hubfs/53/How%20to%20Create%20a%20Brand%20Style%20Guide%20-%20HubSpot%20%26%20Venngage%20%5BEBOOK%20+%20TEMPLATES%5D.pdf'
-          ]} /> 
-          <LeadMarketAnalyst name="Julio" />
+          ]} />  
         </Meeting>
         <WiredCard elevation={2} style={{marginBottom:100, color:'white', textAlign:'left', width:'80%' }}>
         <h2>Meeting Transcription</h2>

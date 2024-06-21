@@ -10,8 +10,8 @@ from meeting import Meeting
 from utils.cypher import get_encryption_key_base64, decryptJSON
 
 #from db.models import Session
-#from db.database import Database
-#db = Database()
+from db.database import Database
+db = Database()
 
 # Configure logging
 #logging.basicConfig(level=logging.INFO)
@@ -61,11 +61,11 @@ async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
                     "key": encryption_key 
                 }), meeting_id)
                 #session = Session(fingerprint=from_frontend["fingerprint"], encryption_key=encryption_key)
-                #db.add(session)
+                #db.add(session) 
 
             elif from_frontend["cmd"] == "create_meeting":
                 try:
-                    if from_frontend["settings"]: 
+                    if from_frontend["settings"]:
                         from_frontend["settings"] = decryptJSON(from_frontend["settings"], from_frontend["fingerprint"])
                         print(f"DEBUG settings: {from_frontend['settings']}")
                     

@@ -38,7 +38,7 @@ const AccountManager = forwardRef(({
             [tools.search]: { 'searching':'Searching websites for more information.' },
             [tools.scrape]: { 'reading': 'Reading the contents ..' },
             [tools.website_search]: { 'webpage': 'Reading the contents ..' },
-        } 
+        }  
     };
     if (task !== "") {
         meta.backstory += `. Your current main task is to '${task}'`;

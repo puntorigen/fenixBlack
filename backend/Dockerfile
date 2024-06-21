@@ -22,8 +22,13 @@ RUN pip install --upgrade "pinecone-client"
 RUN pip install --upgrade "pinecone-text"
 #RUN pip install --no-cache-dir embedchain
 # for secure data exchange with frontend
-RUN pip install pycryptodome secrets
-
+RUN pip install pycryptodome 
+RUN pip install dirtyjson
+#secrets 
+# DEPENDENCIES FOR CUSTOM TOOLS
+RUN pip install playwright \
+    && playwright install --with-deps
+RUN pip install replicate
 
 # Set the working directory
 WORKDIR /app

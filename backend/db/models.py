@@ -4,7 +4,7 @@ from sqlmodel import Field, SQLModel
 from sqlalchemy import Column
 from sqlalchemy.types import JSON
 from pydantic import field_serializer, field_validator
-import json
+import json, time
 
 T = TypeVar("T", bound=SQLModel)
 
@@ -13,6 +13,12 @@ class Session(SQLModel, table=True):
     fingerprint: str
     encryption_key: str
     date: datetime = Field(default_factory=datetime.utcnow)
+
+# the following is used by tools/query_visual_website.py class
+class UrlCache(SQLModel, table=True):
+    url: str = Field(primary_key=True)
+    file_hash: str
+    timestamp: int = Field(default_factory=lambda: int(time.time()))
 
 """
 class Comment(SQLModel, table=True):

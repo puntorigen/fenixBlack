@@ -40,8 +40,9 @@ const ResearchAnalyst = forwardRef(({
         },
         tools: { // defines animations and which tools are available for this agent
             [tools.search]: { 'searching':'Searching websites for more information.' },
+            [tools.query_website_screenshot]: { 'camera': 'Querying webpage visually ..' },
             [tools.scrape]: { 'reading': 'Reading the contents ..' },
-            [tools.website_search]: { 'webpage': 'Reading the contents ..' },
+            [tools.website_search]: { 'webpage': 'Reading the contents ..' }, 
             [tools.pdf_reader]: { 'reading': 'Reading PDF contents ..' },
             [tools.youtube_video_search]: { 'reading': 'Analyzing youtube video ..' },
         },
