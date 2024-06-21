@@ -1,5 +1,4 @@
 tasks:
-- create 'thinking' method animation state for 'Agent' component
 - [x] assign mapping for tools ids and names within 'meeting' class
 - [x] add further actionActivity mapping on 'reportAgentSteps'
 - add 'Agent' support for RAG ('study' prop)
@@ -18,14 +17,23 @@ tasks:
         - would connect to the ws backend, and send the command /add_context to the room
         - the server would receive the command an add the given object to the running context 
 
-- add running meeting timer on Meeting component (with prop showTime=true)
-- add more tools:
+- [ ] add running meeting timer on Meeting component (with prop showTime=true)
+- [ ] add more tools:
     - [x] switched 'scape' for 'rag' internally
 
 - add meeting summary support on finishMeeting
 - add meeting layout support
 - add whiteboard component support
-
+- [ ] add Meeting hide and show methods; hidden by default
+- [ ] add on expert show up animation
+- [ ] add Service component (parent director of meetings)
+    - [ ] add basic input tools (InputField, InputPDF, etc)
+    - [ ] add support for 'study' input elements output for specific expert (ex. InputPDF name='guidelines', as Designer expert prop item study 'guidelines'; by not being an url, it'll search the named outputs and use them as inputs)
+- [ ] impplement Meeting 'rules' on experts adaptTextStyle and meeting output
+- [ ] add support for input in any language and output on same, even if internal thinking is always english
+- [ ] add 'reflectAndLearn' support for every 'named' expert, at the end of each meeting, asks the LLM what did the expert learned from the experience and saves it to a special 'expert' RAG, it can query as a tool in the future. This gets triggered when the Meeting component (or Service) has the prop 'learn=true'.
+- [ ] add special 'HiExpert' (intro message for other team members) call to create a stylized hello message for each expert, considering their role, name, output language, backstory and past experiences.
+- [ ] prepend to every 'expert' backstory the local date and time, so they know which results are newest. 
 - (future) add user avatar (humanInput) integration on meeting (experts/User)
 
 
