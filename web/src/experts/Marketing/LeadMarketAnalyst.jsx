@@ -48,6 +48,7 @@ const LeadMarketAnalyst = forwardRef(({
             //[tools.scrape]: { 'analyzing:#FFFFFF': 'Understanding the design ..' },
             [tools.pdf_reader]: { 'reading': 'Reading pdf ..' },
             [tools.youtube_video_search]: { 'reading': 'Searching on youtube video transcription ..' },
+            [tools.query_visual_website]: { 'camera': 'Querying webpage visually ..' },
         },
         study: study
     };

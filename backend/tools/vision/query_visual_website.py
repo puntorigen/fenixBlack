@@ -51,7 +51,7 @@ class QueryVisualWebsite(BaseTool):
     description: str = "A tool that can be used to perform visual queries of a given website."
     args_schema: Type[BaseModel] = ScreenshotQuery
     url: Optional[str] = None
-    query: Optional[str] = None
+    query: Optional[str] = None 
 
     def __call__(self, url: str, query: str, **kwargs):
         super().__init__(**kwargs)

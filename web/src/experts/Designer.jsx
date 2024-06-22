@@ -47,9 +47,10 @@ const Designer = forwardRef(({
             [tools.scrape]: { 'analyzing:#FFFFFF': 'Understanding the design ..' },
             [tools.pdf_reader]: { 'pdf_reader': 'Reading pdf ..' }, 
             [tools.youtube_video_search]: { 'reading': 'Searching on youtube video transcription ..' },
-            [tools.query_website_screenshot]: { 'camera': 'Querying webpage visually ..' },
+            [tools.query_visual_website]: { 'camera': 'Querying webpage visually ..' },
         }, 
-        study: study
+        study: study,
+        max_num_iterations: 3
     };
 
     const setup = () => {

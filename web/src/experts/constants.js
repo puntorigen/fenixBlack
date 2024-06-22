@@ -5,7 +5,7 @@ export const tools = {
     website_search: 'website_search',
     pdf_reader: 'pdf_reader',
     youtube_video_search: 'youtube_video_search',
-    query_website_screenshot: 'query_website_screenshot',
+    query_visual_website: 'query_visual_website',
 }
 
 export const avatar = {

@@ -189,7 +189,7 @@ class Meeting:
                         expert_action["speak"] = step["data"]
                         try:
                             as_json_test = dirtyjson.loads(step["data"])
-                            expert_action["speak"] = as_json_test.output
+                            expert_action["speak"] = as_json_test["output"]
                         except Exception as e:
                             pass
                         # if expert_action["speak"] is just a word, then valid=False
@@ -281,8 +281,8 @@ class Meeting:
             memory=False,
             allow_delegation=expert.collaborate,
             max_execution_time=expert.max_execution_time,
-            max_iter=get_max_num_iterations(10),
-            llm=get_llm(openai="gpt-4", temperature=0.1),
+            max_iter=expert.max_num_iterations, #get_max_num_iterations(7),
+            llm=get_llm(openai="gpt-4o", temperature=0.0), #gpt-4 temp 0.1, works best, but it's pricier
             tools=tools,
             step_callback=reportAgentStepsSync 
         )
@@ -318,8 +318,8 @@ class Meeting:
             backstory=improvedTask.coordinator_backstory,
             allow_delegation=True,
             verbose=True, 
-            max_iter=get_max_num_iterations(10),
-            llm=get_llm("gpt-4o"),
+            max_iter=get_max_num_iterations(5),
+            llm=get_llm("gpt-4o",temperature=0.0),
             tools=[],
             step_callback=reportAgentStepsSync
         )
@@ -568,9 +568,9 @@ class Meeting:
         elif tool_id == "youtube_video_search":
             from crewai_tools import YoutubeVideoSearchTool
             return YoutubeVideoSearchTool(config=self.vector_config("youtube")) 
-        elif tool_id == "query_website_screenshot": 
-            from tools import query_visual_website2 
-            return query_visual_website2.QueryVisualWebsite()
+        elif tool_id == "query_visual_website": 
+            from tools.vision import QueryVisualWebsite 
+            return QueryVisualWebsite()
         return None
     
     def create_meeting(self, request):

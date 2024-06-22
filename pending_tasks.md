@@ -20,10 +20,13 @@ tasks:
 - [ ] add running meeting timer on Meeting component (with prop showTime=true)
 - [ ] add more tools:
     - [x] switched 'scape' for 'rag' internally
+    - [x] add visual website query using vision LLM
+    - [] add token tracker per tool, using envs or db per meeting session
 
 - add meeting summary support on finishMeeting
 - add meeting layout support
 - add whiteboard component support
+- [ ] add meeting duration tracker
 - [ ] add Meeting hide and show methods; hidden by default
 - [ ] add on expert show up animation
 - [ ] add Service component (parent director of meetings)

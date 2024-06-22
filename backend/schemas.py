@@ -22,7 +22,7 @@ class Tools(BaseModel):
     website_search: Optional[Dict[str, str]] = Field(None, description="Tool for querying a given website")
     pdf_reader: Optional[Dict[str, str]] = Field(None, description="Tool for reading PDF file contents")
     youtube_video_search: Optional[Dict[str, str]] = Field(None, description="Tool for querying the contents of a youtube video")
-    query_website_screenshot: Optional[Dict[str, str]] = Field(None, description="Tool for querying a website url using vision")
+    query_visual_website: Optional[Dict[str, str]] = Field(None, description="Tool for querying a website url using vision")
   
 class ExpertModel(BaseModel):
     type: Optional[str] = Field(None, description="Type of the object, e.g., 'expert'")
@@ -38,6 +38,7 @@ class ExpertModel(BaseModel):
     avatar_id: str = Field(..., description="Identifier for the field associated with the avatar")
     study: Optional[List[str]] = Field(None, description="Optional list of URLs for learning resources related to the expert")
     max_execution_time: int = Field(..., description="Maximum number of seconds the expert can work on a task")
+    max_num_iterations: Optional[int] = Field(7, description="Maximum number of iterations the expert can work on a task. More is smarter.")
 
 class TaskContext(BaseModel):
     context: str = Field(..., description="The context of the task")
