@@ -274,7 +274,7 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
                 } else if (obj?.action === 'improvedTask') {
                     // gets the improved version of the user task that's going to be used
                     setInProgress(true);
-                    addTranscript('Fenix',`After some reflexion I believe a better description for the task we should perform is: '${obj.data.description}'. The expected output for our meeting is '${obj.data.expected_output}'.`,'thought','Meeting Coordinator');
+                    addTranscript('Fenix',`${obj.data.description_first_person}. ${obj.data.expected_output}'.`,'thought','Meeting Coordinator');
                     console.log('Received data:', obj);
                     if (refs.current['field-0']) {
                         // split the description into an array
@@ -333,31 +333,6 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
                         } 
                     } else if (play.kind === 'tool') {
                         //console.log('TOOL NOT USED');
-                    } else {
-                        console.log('DEBUG: THOUGHT OBJECT:',obj);
-                        let meta_expert = {};
-                        if (play.expert_id === 'coordinator') {
-                            meta_expert = {
-                                name: 'Fenix',
-                                role: 'Meeting Coordinator',
-                            };
-                        } else if (refs.current[play.expert_id]) {
-                            meta_expert = refs.current[play.expert_id].meta();
-                        }
-                        for (const step_ of obj.data) {
-                            if (step_.type === 'response_str') {
-                                let data__ = step_.data;
-                                try {
-                                    // try parsing it as json
-                                    data__ = dJSON.parse(step_.data);
-                                    if (data__.output) {
-                                        addTranscript(meta_expert.name,data__.output,'thought',meta_expert.role);
-                                    }
-                                } catch(e) {
-                                    addTranscript(meta_expert.name,data__,'thought',meta_expert.role);
-                                }
-                            }
-                        }
                     }
 
                 } else if (obj?.action === 'finishedMeeting') {

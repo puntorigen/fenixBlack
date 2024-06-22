@@ -68,7 +68,7 @@ class Meeting:
             model="gpt-4o",
             response_model=AdaptedStyle,
             messages=[
-                {"role": "system", "content": "# act as an excellent writer, expert in adapting text to a specific given personality and style. Always consider writing in the first person and using a maximum of 140 characters, in present tense."},
+                {"role": "system", "content": "# act as an excellent writer, expert in adapting text to a specific given personality and style. Always consider writing in the first person and using a maximum of 140 characters, in present continuous, and always focus on the latest action being done."},
                 {"role": "user", "content": dedent(f"""
                     # Consider the following personality instruction for adapting the text:
                     ```{expert.personality}```
@@ -81,6 +81,7 @@ class Meeting:
                 """)},
             ],
             temperature=0.7,
+            max_tokens=200,
             stream=False,
         )
         print("Adapted TEXT FOR PERSONALITY: ", adaptText.model_dump())
@@ -194,7 +195,9 @@ class Meeting:
                         # if expert_action["speak"] is just a word, then valid=False
                         if len(expert_action["speak"].split()) == 1:
                             expert_action["valid"] = False
-                
+                        if expert_action["valid"]:
+                            break
+
             # if expert.personality is not empty and expert_action is not empty
             if expert.personality and expert_action["valid"]:
                 # adapt the expert_action to the expert's personality
@@ -206,6 +209,7 @@ class Meeting:
                     except Exception as e2: 
                         print("DEBUG: adaptTextToPersonality ERROR3",e2)
                         expert_action["speak"] = ". ".join(expert_action["speak"]) + "." # convert list to string
+                        expert_action["speak"] = self.adaptTextToPersonality(expert_action["speak"], expert)
                 else:
                     expert_action["speak"] = "" # convert list to string
 

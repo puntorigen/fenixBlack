@@ -38,7 +38,7 @@ const Designer = forwardRef(({
             facialHairStyle: avatar.facialHairStyle.none,
             glassesStyle: avatar.glassesStyle.none,
             eyebrowsStyle: avatar.eyebrowsStyle.eyelashesUp,
-            speakSpeed: 800,
+            speakSpeed: 200,
             blinkSpeed: 3000,
         },
         tools: { // defines animations and which tools are available for this agent

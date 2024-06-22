@@ -41,7 +41,7 @@ def take_screenshot(url: str) -> str:
             viewport={"width": 1280, "height": 800},  # Smaller viewport size
         )
         page = context.new_page()
-        page.goto(url, wait_until="networkidle") 
+        page.goto(url) 
         page.screenshot(path=output_file, full_page=True, type="jpeg")
         browser.close()
     return output_file
