@@ -1,12 +1,10 @@
 import json, os, asyncio, base64
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from contextlib import asynccontextmanager
-from utils.ConnectionManager import ConnectionManager
+from utils import ConnectionManager, get_encryption_key_base64, decryptJSON
 from dotenv import load_dotenv
 
 from meeting import Meeting
-from utils.cypher import get_encryption_key_base64, decryptJSON
-
 #from db.models import Session
 from db.database import Database
 db = Database()
@@ -48,7 +46,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 @app.websocket("/meeting/{meeting_id}")
-async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
+async def websocket_endpoint_meeting(websocket: WebSocket, meeting_id: str):
     manager = ConnectionManager() #websocket
     await manager.connect(websocket, meeting_id)
     try: 
@@ -107,21 +105,16 @@ async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
         manager.disconnect(websocket,meeting_id)
 
 ### TESTING TWILIO ENDPOINT: we should move this later into the 'call' tool ###
-import elevenlabs, io, httpx
 from twilio.rest import Client
 from pydantic import BaseModel
-from pydub import AudioSegment
-from deepgram import (
-    DeepgramClient,
-    DeepgramClientOptions,
-    PrerecordedOptions,
-    FileSource,
-)
+#from pydub import AudioSegment
+from utils import CallManager
 
 #mulaw
-DEEPGRAM_WS_URL = "wss://api.deepgram.com/v1/listen?encoding=mulaw&sample_rate=8000&channels=1&multichannel=false&model=nova-2&language=es"
+DEEPGRAM_WS_URL = "wss://api.deepgram.com/v1/listen?encoding=mulaw&sample_rate=8000&channels=1&multichannel=false&model=nova-2&language=es&punctuate=true&smart_format=false"
 twilio_client = Client(os.getenv('TWILIO_ACCOUNT_SID'), os.getenv('TWILIO_AUTH_TOKEN'))
-deepgram_client = DeepgramClient(os.getenv("DEEPGRAM_API_KEY"))
+call_managers = {}
+meeting_to_callsid = {}
 
 class CallRequest(BaseModel):
     to_number: str
@@ -132,7 +125,7 @@ class CallRequest(BaseModel):
 @app.get("/call")
 async def make_call(): #request: CallRequest):
     request = {
-        "to_number": "+56900000000", #put your test phone number here
+        "to_number": "+your-test-number", 
         "meeting_id": "1235",
         "voice_id": "1234"
     }
@@ -153,9 +146,6 @@ async def make_call(): #request: CallRequest):
     )
     return {"status": "call initiated", "sid": call.sid, "from": from_number, "url": f"wss://{public_url}/audio/{request["meeting_id"]}" }
 
-### the websocket endpoint should be kept here
-audio_manager = ConnectionManager()
-
 async def deepgram_connect():
     import websockets
     extra_headers = {
@@ -167,25 +157,32 @@ async def deepgram_connect():
 @app.websocket("/audio/{meeting_id}")
 async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
     print("Audio websocket connected")
+    ### the websocket endpoint should be kept here
+    audio_manager = ConnectionManager()
     await audio_manager.connect(websocket, meeting_id)
     audio_queue = asyncio.Queue()
     callsid_queue = asyncio.Queue()
     deepgram_ws = await deepgram_connect()
+    stream_sids = {} #dict mapping callsid to streamSid
 
     try:
         await asyncio.gather(
             deepgram_sender(deepgram_ws, audio_queue),
-            deepgram_receiver(deepgram_ws, callsid_queue, meeting_id, audio_manager),
-            twilio_receiver(websocket, audio_queue, callsid_queue, meeting_id)
+            deepgram_receiver(deepgram_ws, callsid_queue, meeting_id, audio_manager, stream_sids),
+            twilio_receiver(websocket, audio_queue, callsid_queue, stream_sids)
         )
     except WebSocketDisconnect:
         audio_manager.disconnect(websocket, meeting_id)
+        await handle_call_end(meeting_id)
     finally:
         if deepgram_ws.open:
             await deepgram_ws.send(json.dump({
                 "type": "CloseStream"
             }))
             await deepgram_ws.close()
+        # Cleanup resources for the callsid
+        if meeting_id in meeting_to_callsid:
+            await handle_call_end(meeting_id)
 
 async def deepgram_sender(deepgram_ws, audio_queue):
     while True:
@@ -198,52 +195,59 @@ async def deepgram_sender(deepgram_ws, audio_queue):
             print("Websocket to Deepgram is closed, dropping audio chunk")
 
 # get the transcription 
-async def deepgram_receiver(deepgram_ws, callsid_queue, meeting_id, audio_manager):
+async def deepgram_receiver(deepgram_ws, callsid_queue, meeting_id, audio_manager, stream_sids):
+    global call_managers
+    global meeting_to_callsid
     callsid = await callsid_queue.get()
+    meeting_to_callsid[meeting_id] = callsid
+    if callsid not in call_managers:
+        call_managers[callsid] = CallManager(audio_manager, meeting_id, callsid, stream_sids, os.getenv("GROQ_API_KEY"), os.getenv("ELEVEN_LABS_API_KEY"))
+    call_manager = call_managers[callsid]
+
     async for message in deepgram_ws:
+        #transcript_session
         #print(f"Received transcription for call {callsid}: {message}")
-        transcription = json.loads(message).get('channel', {}).get('alternatives', [{}])[0].get('transcript', '')
-        if transcription:
-            print(f"Transcription for call {callsid}: {transcription}")
-            #await audio_manager.send_message(transcription, meeting_id)
-            # Process transcription with LLM
-            #llm_response = await process_with_llm(transcription)
-            # Synthesize audio from LLM response
-            #audio_content = synthesize_audio(llm_response)
-            # Send synthesized audio back to Twilio
-            #await audio_manager.send_message(json.dumps({
-            #    "event": "media",
-            #    "streamSid": callsid,
-            #    "media": {
-            #        "payload": base64.b64encode(audio_content).decode('utf-8')
-            #    }
-            #}), meeting_id)
+        data = json.loads(message)
+        transcription = data.get('channel', {}).get('alternatives', [{}])[0].get('transcript', '')
+        call_manager.add_transcription_part(transcription)
+
+async def handle_call_end(meeting_id):
+    global call_managers
+    global meeting_to_callsid
+    callsid = meeting_to_callsid.get(meeting_id)
+    if callsid:
+        # Clean up resources for the callsid
+        if callsid in call_managers:
+            call_manager = call_managers.pop(callsid)
+            print(f"Cleanup resources for callsid: {callsid}")
+            # Add any cleanup code needed within SilenceManager
+            call_manager.cleanup()
         
-async def twilio_receiver(twilio_ws, audio_queue, callsid_queue, room):
+        # Remove the mapping once cleanup is complete
+        del meeting_to_callsid[meeting_id]
+
+
+async def twilio_receiver(twilio_ws, audio_queue, callsid_queue, stream_sids):
     while True:
         try:
             message = await twilio_ws.receive_text()
             data = json.loads(message)
+
             if data['event'] == 'start':
                 callsid = data['start']['callSid']
+                stream_sid = data['start']['streamSid']
                 await callsid_queue.put(callsid)
+                stream_sids[callsid] = stream_sid  # Store streamSid associated with callsid
+
             elif data['event'] == 'media':
                 chunk = base64.b64decode(data['media']['payload'])
                 await audio_queue.put(chunk)
+
             elif data['event'] == 'stop':
                 await audio_queue.put(None)  # Signal the end of stream
                 break
         except WebSocketDisconnect:
             break
-
-# TODO
-async def process_with_llm(transcription: str) -> str:
-    pass
-
-# TODO
-def synthesize_audio(text: str) -> bytes:
-    pass
-### 
 
 if __name__ == "__main__":
     import uvicorn
