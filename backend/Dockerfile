@@ -29,6 +29,14 @@ RUN pip install dirtyjson
 RUN pip install playwright \
     && playwright install --with-deps
 RUN pip install replicate
+# FOR NGROK AND CALL TOOL
+# Install ffmpeg
+RUN apt-get update && apt-get install -y ffmpeg
+# Install others
+RUN pip install pyngrok
+RUN pip install twilio 
+RUN pip install deepgram-sdk elevenlabs
+RUN pip install pydub
 
 # Set the working directory
 WORKDIR /app

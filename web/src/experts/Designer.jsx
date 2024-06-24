@@ -50,7 +50,7 @@ const Designer = forwardRef(({
             [tools.query_visual_website]: { 'camera': 'Querying webpage visually ..' },
         }, 
         study: study,
-        max_num_iterations: 3
+        max_num_iterations: 3 
     };
 
     const setup = () => {

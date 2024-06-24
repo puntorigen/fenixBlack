@@ -26,7 +26,9 @@ const Agent = forwardRef(({
         ...puppetRef.current,
         // Custom methods
         getID: ()=>id,
-        meta: () => ({...{ 
+        meta: () => ({...{  
+            // default personality
+            personality: `Always use 'I' instead of 'You', use easy to understand terms, don't use exagerated words, and be straightfoward on the tasks you are going to perform.`,            
             max_execution_time: 60*5,   // 5 minutes
             max_num_iterations: 7       // 7 iterations; 25 default, but less is cheaper
         }, ...meta }), 

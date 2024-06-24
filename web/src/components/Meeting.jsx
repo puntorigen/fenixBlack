@@ -321,11 +321,11 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
                         }
                     } else if (play.valid === true && play.kind === 'thought') {
                         console.log('DEBUG: NEW THOUGHT DETECTED:',obj);
-                        if (refs.current[play.expert_id]) {
+                        if (refs.current[play.expert_id]) { 
                             await refs.current[play.expert_id].play(play.tool_id);
-                            await refs.current[play.expert_id].speak(play.sentences,400,150,300,async function() {
-                                console.log('meeting->agent speaking done');
-                                refs.current[play.expert_id].avatarSize('100%');
+                            await refs.current[play.expert_id].speak(`(${play.sentences})`,400,150,1000,async function() {
+                                console.log('meeting->agent speaking done (thought)'); 
+                                refs.current[play.expert_id].avatarSize('100%'); 
                                 await refs.current[play.expert_id].stop();
                             });
                             const meta_expert = refs.current[play.expert_id].meta();
@@ -335,23 +335,47 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
                         //console.log('TOOL NOT USED');
                     }
 
-                } else if (obj?.action === 'finishedMeeting') {
-                    // dummy, update an avatar with the data (just testing)
+                } else if (obj?.action === 'raw_output') {
+                    // this is the unstructured end of the meeting
                     // stop all animations and speak the final message
                     // iterate refs
+                    let manager_expert_id = null;
                     for (const expert_id in refs.current) {
                         if (refs.current[expert_id].stop) {
                             await refs.current[expert_id].avatarSize('100%');
                             await refs.current[expert_id].stop();
-                        } 
+                        }
+                        // make the first avatar 'speak' the final result (TODO should be a manager)
+                        // loop through the refs and find the first 'manager' (role)
+                        const meta_expert = refs.current[expert_id].meta();
+                        if (meta_expert.role && meta_expert.role.toLowerCase().indexOf('manager')!=-1) {
+                            manager_expert_id = expert_id;
+                        }
                     }
-                    //
-                    if (refs.current['field-0']) {
-                        const meta_expert = refs.current['field-0'].meta();
-                        addTranscript(meta_expert.name,'The meeting has ended, thank you everyone.','says',meta_expert.role);
+
+                } else if (obj?.action === 'finishedMeeting') {
+                    // get the first manager of the team meeting
+                    let manager_expert_id = null;
+                    for (const expert_id in refs.current) {
+                        const meta_expert = refs.current[expert_id].meta();
+                        if (meta_expert.role && meta_expert.role.toLowerCase().indexOf('manager')!=-1) {
+                            manager_expert_id = expert_id;
+                        }
+                    }
+                    // if there's no manager on the team, make the first avatar 'speak' the final result
+                    if (!manager_expert_id) {
+                        manager_expert_id = 'field-0';
+                    }
+                    const meta_expert = refs.current[manager_expert_id].meta();
+                    addTranscript(meta_expert.name,'The meeting has ended, thank you everyone.','says',meta_expert.role);
+                    if (obj.final_report) {
+                        addTranscript(meta_expert.name,'This is the result of our meeting: '+obj.final_report,'says',meta_expert.role);
+                    } else {
                         addTranscript(meta_expert.name,'This is the result of our meeting: '+obj.data,'says',meta_expert.role);
-                        refs.current['field-0'].speak("The meeting was completed, check the console output for the data.");
                     }
+                    refs.current[manager_expert_id].speak("The meeting was completed, check the console output for the data.");
+
+                    // final STRUCTURED output of the meeting
                     let zod_schema = {};  
                     try {
                         zod_schema = schema.parse(obj.data);

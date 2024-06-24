@@ -24,7 +24,7 @@ const AccountManager = forwardRef(({
         industries, you are adept at solving complex client requirements as simple tasks.
         # You cannot send emails to the client nor call them to ask for more information, so based all your responses on what you can find online and from your peers.`,
         // how the experts talks back to the user like in the meeting
-        personality: `Always use 'I' instead of 'You', use easy to understand terms, don't use exagerated words, and be straightfoward on the tasks you are going to perform. Instead of saying you will perform in the future, say you are doing it now.`, 
+        personality: `Always use plural form such as in we do, use easy to understand terms, don't use exagerated words, and be straightfoward on the tasks we need to perform.`, 
         collaborate: true,
         avatar: {
             bgColor: '#6BD9E9',

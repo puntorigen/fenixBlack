@@ -2,9 +2,9 @@ from fastapi import WebSocket
 import asyncio
 
 class ConnectionManager:
-    def __init__(self, websocket: WebSocket):
+    def __init__(self): #, websocket: WebSocket
         self.rooms = {}
-        self.websocket = websocket
+        #self.websocket = websocket
         #self.keepalive_tasks = {}
 
     async def connect(self, websocket: WebSocket, room_id: str):

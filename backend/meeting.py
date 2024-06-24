@@ -1,6 +1,6 @@
 from crewai import Agent, Task, Crew, Process
 from crewai.tasks.task_output import TaskOutput
-from utils.LLMs import get_llm, get_max_num_iterations
+from utils.LLMs import get_llm, get_max_num_iterations, get_ollama_model
 from schemas import TaskContext, ExpertModel, ImprovedTask
 
 from textwrap import dedent
@@ -52,7 +52,7 @@ class Meeting:
         except Exception as e:
             print("DEBUG: send_data ERROR",e)
 
-    def adaptTextToPersonality(self, text: str, expert: ExpertModel):
+    def adaptTextToPersonality(self, text: str, expert: ExpertModel, max_tokens=100):
         from typing import Dict, Optional
         from pydantic import BaseModel, Field
         rules = ""
@@ -62,13 +62,13 @@ class Meeting:
         #        ```{self.meta.rules}```
         #    """)
         class AdaptedStyle(BaseModel):
-            new_text: str = Field(None, description="New text adapted to the given personality using a maximum of 140 characters.")
+            new_text: str = Field(None, description="New text adapted to the given personality using a maximum of 140 characters. Don't include either actions and/or action inputs.")
         
         adaptText = client_instructor_sync.chat.completions.create(
             model="gpt-4o",
             response_model=AdaptedStyle,
             messages=[
-                {"role": "system", "content": "# act as an excellent writer, expert in adapting text to a specific given personality and style. Always consider writing in the first person and using a maximum of 140 characters, in present continuous, and always focus on the latest action being done."},
+                {"role": "system", "content": "# act as an excellent and engaging writer, expert in adapting the given text to a specific given personality, style and voice. Always consider using a maximum of 140 characters, and always focus on the latest action being done. You speak like a friendly human, removing any unnecessary words and JSON objects and/or parameters."},
                 {"role": "user", "content": dedent(f"""
                     # Consider the following personality instruction for adapting the text:
                     ```{expert.personality}```
@@ -80,8 +80,8 @@ class Meeting:
                     # always use We instead of You, and use present continuous tense if 'you' are performing something.
                 """)},
             ],
-            temperature=0.7,
-            max_tokens=200,
+            temperature=0.6,
+            max_tokens=max_tokens,
             stream=False,
         )
         print("Adapted TEXT FOR PERSONALITY: ", adaptText.model_dump())
@@ -195,13 +195,18 @@ class Meeting:
                         # if expert_action["speak"] is just a word, then valid=False
                         if len(expert_action["speak"].split()) == 1:
                             expert_action["valid"] = False
+                        elif "final answer" in expert_action["speak"]:
+                            expert_action["valid"] = False
+                        elif "I did it wrong." in expert_action["speak"]:
+                            expert_action["valid"] = False
                         if expert_action["valid"]:
                             break
 
             # if expert.personality is not empty and expert_action is not empty
             if expert.personality and expert_action["valid"]:
                 # adapt the expert_action to the expert's personality
-                if expert_action["speak"]:
+                if expert_action["speak"]: 
+                    expert_action["speak_raw"] = expert_action["speak"]
                     try:
                         speak_text = expert_action["speak"]
                         adapted_ = self.adaptTextToPersonality(speak_text, expert)
@@ -461,10 +466,14 @@ class Meeting:
             result_json = result_json.json()
         except Exception as e:
             pass
+        # generate friendly text from the result_json
+        final_expert = ExpertModel(role="virtual",goal="virtual",backstory="virtual",collaborate=True,avatar_id="virtual", personality="Always use 'I' instead of 'You', use easy to understand terms, don't use exagerated words, and speak in the past tense.", max_execution_time=500, max_num_iterations=7)
+        final_report = self.adaptTextToPersonality(result_json, final_expert, 4000)
         # reply END to the frontend
         payload = { 
             "action": "finishedMeeting",
             "data": result_json,
+            "final_report": final_report,
             "metrics": metrics,
             #"tasks": result["tasks_outputs"].dict(),
         } 
