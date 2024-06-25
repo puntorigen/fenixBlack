@@ -1,4 +1,4 @@
-import time, asyncio, random, json
+import time, asyncio, random, json, io
 from utils import TranscriptCollector, VoiceSynthesizer, LanguageModelProcessor
 
 class CallManager:
@@ -7,8 +7,8 @@ class CallManager:
         self.callsid = callsid
         self.stream_sids = stream_sids
         self.meeting_id = meeting_id
-        self.language_processor = LanguageModelProcessor(groq_api_key)
-        self.synthethizer = VoiceSynthesizer(eleven_labs_api_key, voice_id="jqwiF3p1rXMRysuB7Oho")
+        self.language_processor = LanguageModelProcessor("Gabriela",groq_api_key)
+        self.synthethizer = VoiceSynthesizer(eleven_labs_api_key, voice_id="vzaJvh9C2Ee6ke7crNue")
         self.base_filler_threshold_ms = base_filler_threshold_ms
         self.cooldown_period_ms = cooldown_period_ms
         self.response_threshold_ms = response_threshold_ms
@@ -56,7 +56,7 @@ class CallManager:
             print(f"[{current_time}] Generated Response: {response}")
             self.last_response_time = time.time() * 1000  # Update the last response time
             # send the response to the audio_manager
-            audio64 = self.synthethizer.get_audio_base64(response)
+            audio64, audio_duration_ms = self.synthethizer.get_audio_base64(response)
             stream_sid = self.stream_sids.get(self.callsid, None)
             if stream_sid:
                 payload = {
@@ -68,8 +68,16 @@ class CallManager:
                 }
                 asyncio.create_task(self.audio_manager.send_message(json.dumps(payload), self.meeting_id))
 
+            # Sleep to simulate the playback duration of the response audio
+            audio_duration_seconds = audio_duration_ms / 1000
+            print(f"[{current_time}] Generated Audio duration (sleeping): {audio_duration_seconds} seconds")
+            asyncio.create_task(self.handle_response_delay(audio_duration_seconds))
             self.transcript_collector.reset()  # Reset the transcript collector after processing
-            self.reset_timer()  # Ensure timers are reset for new speaking turns
+
+    async def handle_response_delay(self, delay_seconds):
+        await asyncio.sleep(delay_seconds)
+        # Reset the timer after the delay to ensure new audio handling is synced with the end of playback
+        self.reset_timer()
 
     def trigger_filler(self):
         if not self.transcript_collector.is_empty():  # Ensure there's been speech before filler

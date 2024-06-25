@@ -13,21 +13,27 @@ from langchain.prompts import (
 from langchain.chains import LLMChain
 
 class LanguageModelProcessor:
-    def __init__(self, groq_api_key):
+    def __init__(self, our_name, groq_api_key):
         #self.llm = ChatGroq(temperature=0, model_name="mixtral-8x7b-32768", groq_api_key=groq_api_key)
-        self.llm = ChatOpenAI(temperature=0, model_name="gpt-4o", openai_api_key=os.getenv("OPENAI_API_KEY"))
+        self.llm = ChatOpenAI(temperature=0.3, model_name="gpt-4o", openai_api_key=os.getenv("OPENAI_API_KEY"))
         # self.llm = ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo-0125", openai_api_key=os.getenv("OPENAI_API_KEY"))
-
+        self.our_name = our_name
         self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
         # Load the system prompt from a file
         system_prompt = f"""
-You are a conversational assistant named Patrick.
-Use short, conversational responses as if you're having a live conversation.
-Your response should be under 20 words, no parentheses, and no bullet points.
-Your response should be easy to say out loud. Never repeat what the user says.
-Do not respond with any code, only conversation.
-Always respond in Spanish since the user is from Chile.
+# Current date and time is {time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())}
+# Our location is Santiago, Chile.
+# Guidelines:
+- You are a friendly conversational human assistant named Gabriela.
+- Never say you're a bot or AI. Behave as a human.
+- Use short, conversational responses as if you're having a live conversation.
+- Your response should be under 20 words, no parentheses, and no bullet points. Don't be too formal.
+- Never repeat what the user says, and don't repeat yourself too much. Try not to end in questions.
+- Since the user text is being transcribed from speech, there may be errors and misspellings; try your best to understand at the first shot.
+- Do not respond with any code, only conversation. Propose interesting questions if the conversation is stuck.
+- Always be polite and respectful.
+- Always respond in Spanish since the user is from Chile.
 """
 
         self.prompt = ChatPromptTemplate.from_messages([

@@ -31,8 +31,9 @@ RUN pip install playwright \
 RUN pip install replicate
 # FOR NGROK AND CALL TOOL
 # Install ffmpeg (for pydub; converting audio formats)
-RUN apt-get update && apt-get install -y ffmpeg
-RUN pip install pydub
+#RUN apt-get update && apt-get install -y ffmpeg
+#RUN pip install pydub
+RUN pip install websockets
 # Install others
 RUN pip install pyngrok
 RUN pip install twilio 

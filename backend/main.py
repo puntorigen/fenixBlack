@@ -122,10 +122,10 @@ class CallRequest(BaseModel):
     voice_id: str
 
 #@app.post("/call")
-@app.get("/call")
-async def make_call(): #request: CallRequest):
+@app.get("/call/{to_number}")
+async def make_call(to_number: str): #request: CallRequest):
     request = {
-        "to_number": "+your-test-number", 
+        "to_number": to_number,
         "meeting_id": "1235",
         "voice_id": "1234"
     }
