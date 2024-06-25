@@ -1,5 +1,5 @@
 import time, asyncio, random, json, io
-from utils import TranscriptCollector, VoiceSynthesizer, LanguageModelProcessor
+from utils import TranscriptCollector, VoiceSynthesizer, LanguageModelProcessor, WebSocketClient
 
 class CallManager:
     def __init__(self, audio_manager, meeting_id, callsid, stream_sids, groq_api_key, eleven_labs_api_key, base_filler_threshold_ms=900, response_threshold_ms=1200, cooldown_period_ms=2000, extended_silence_ms=5000):
@@ -9,6 +9,7 @@ class CallManager:
         self.meeting_id = meeting_id
         self.language_processor = LanguageModelProcessor("Gabriela",groq_api_key)
         self.synthethizer = VoiceSynthesizer(eleven_labs_api_key, voice_id="vzaJvh9C2Ee6ke7crNue")
+        self.notify_manager = WebSocketClient(meeting_id) # where to notify events to the frontend & tools
         self.base_filler_threshold_ms = base_filler_threshold_ms
         self.cooldown_period_ms = cooldown_period_ms
         self.response_threshold_ms = response_threshold_ms
@@ -47,11 +48,13 @@ class CallManager:
                     self.filler_triggered = True
 
     def trigger_response(self):
-        full_transcript = self.transcript_collector.get_full_transcript().strip()
+        full_sentence = self.transcript_collector.get_full_transcript().strip()
         current_time = time.time() * 1000
-        if full_transcript:
-            print(f"[{current_time}] Processing response: {full_transcript}") # for {self.callsid}
-            response = self.language_processor.process(full_transcript)
+        if full_sentence:
+            print(f"[{current_time}] Processing response: {full_sentence}") # for {self.callsid}
+            # TODO: check with groq and instructor if this 'full_sentence' looks indeed like a full sentence or just a part of it
+            # if it's not a full sentence, we should wait for the next part to complete it and just say 'uhmm' or 'I see' or a filler word
+            response = self.language_processor.process(full_sentence)
             #response = self.process_response(full_transcript)
             print(f"[{current_time}] Generated Response: {response}")
             self.last_response_time = time.time() * 1000  # Update the last response time
