@@ -18,6 +18,7 @@ const useRefs = () => {
 const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinish, onError, onDialog, hidden = false }, refMain) => {
     const [refs, register] = useRefs();
     const [isVisible, setVisible] = useState(!hidden);
+    const [enhancedChildren, setEnhancedChildren] = useState([]);
     const [experts, setExperts] = useState({});
     const websocketRef = useRef(null);
     const windowSize = useWindowSize();
@@ -59,6 +60,22 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
     const variants = {
         hidden: { opacity: 0, scale: 0.95 },
         visible: { opacity: 1, scale: 1 }
+    };
+
+    const parseChildren = () => {
+        Object.keys(refs.current).forEach(refName => {
+            if (refs.current[refName] && refs.current[refName].meta) {
+                const meta = refs.current[refName].meta();
+                const avatar_id = refs.current[refName].getID();  // trick to get the ID of the agent
+                if (meta.type === 'expert') {
+                    if (!meta.avatar_id) meta.avatar_id = avatar_id;
+                    setExperts(prev => {
+                        return { ...prev, [meta.name+'|'+meta.role]: meta };
+                    })
+                    addTranscript(meta.name,`Hi my name is ${meta.name} and I'm the ${meta.role} in this meeting. My goal is to help in '${meta.goal}'.`,'intro',meta.role);
+                }
+            }
+        });
     };
 
     useEffect(() => {
@@ -122,21 +139,6 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
         setTranscript([]);
         addTranscript('Fenix',`Hi my name is Fenix and I'm the Meeting Coordinator. My goal is to 'help the team coordinate tasks between team members and query customer data'.`,'intro','Meeting Coordinator');
         // prepare the children nodes
-        const parseChildren = () => {
-            Object.keys(refs.current).forEach(refName => {
-                if (refs.current[refName] && refs.current[refName].meta) {
-                    const meta = refs.current[refName].meta();
-                    const avatar_id = refs.current[refName].getID();  // trick to get the ID of the agent
-                    if (meta.type === 'expert') {
-                        meta.avatar_id = avatar_id;
-                        setExperts(prev => {
-                            return { ...prev, [meta.name+'|'+meta.role]: meta };
-                        })
-                        addTranscript(meta.name,`Hi my name is ${meta.name} and I'm the ${meta.role} in this meeting. My goal is to help in '${meta.goal}'.`,'intro',meta.role);
-                    }
-                }
-            });
-        }
         parseChildren();
         init();
         // Clean up WebSocket connection when component unmounts
@@ -147,18 +149,25 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
         };
     }, []); // Ensure it runs whenever children change
 
-    const enhancedChildren = React.Children.map(children, (child, index) =>
-        <motion.div
-            variants={itemVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            custom={index}
-            style={{ marginLeft: '20px' }}
-        >
-            {React.cloneElement(child, { ...child.props, style:{ }, id:`field-${index}` ,ref: (ref)=>register(`field-${index}`,ref) })}
-        </motion.div>
-    );
+    useEffect(()=> {
+        const newEnhancedChildren = React.Children.map(children, (child, index) =>
+            <motion.div
+                variants={itemVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                custom={index}
+                style={{ marginLeft: '20px' }}
+            >
+                {React.cloneElement(child, { ...child.props, style:{ }, id:`field-${index}` ,ref: (ref)=>register(`field-${index}`,ref) })}
+            </motion.div>
+        );
+        setEnhancedChildren(newEnhancedChildren);
+        if (children && children.length != Object.keys(experts).length) {
+            parseChildren();
+        }
+        //console.log('enhancedChildren regenerated!',experts,newEnhancedChildren);
+    }, [children])
 
     const connectWebSocket = async (meetingId, onMessage, onOpen) => {
         const websocket = new WebSocket(`ws://localhost:8000/meeting/${meetingId}`);
