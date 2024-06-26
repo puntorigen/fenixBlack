@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useCallback, useState, forwardRef, useImperativeHandle } from 'react';
 import { zodToJson,splitSentences,getBrowserFingerprint,encryptData } from '../utils/utils';
 import { useWindowSize } from "@uidotdev/usehooks";
+import { motion, AnimatePresence } from 'framer-motion';
 
 const useRefs = () => {
     const refs = useRef({});
@@ -14,8 +15,9 @@ const useRefs = () => {
     return [ refs, register ];
 };
 
-const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinish, onError, onDialog }, refMain) => {
+const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinish, onError, onDialog, hidden = false }, refMain) => {
     const [refs, register] = useRefs();
+    const [isVisible, setVisible] = useState(!hidden);
     const [experts, setExperts] = useState({});
     const websocketRef = useRef(null);
     const windowSize = useWindowSize();
@@ -36,6 +38,27 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
             obj.full = `${obj.time} [${obj.role}] ${obj.speaker}: ${obj.message}`;
         }
         setTranscript(prev => [...prev, obj]);
+    };
+
+    const itemVariants = {
+        hidden: { x: 50, opacity: 0 },
+        visible: i => ({ x: 0, opacity: 1, transition: { delay: i * 0.5, type: 'spring', stiffness: 120 } }),
+        exit: i => ({
+            x: -100,  // Move to the left
+            opacity: 0,
+            transition: {
+                delay: i * 0.7,  // Apply staggered delay based on index
+                type: 'spring',
+                stiffness: 120
+                //duration: 1.5,
+                //ease: 'easeInOut'
+            }
+        })
+    };
+
+    const variants = {
+        hidden: { opacity: 0, scale: 0.95 },
+        visible: { opacity: 1, scale: 1 }
     };
 
     useEffect(() => {
@@ -125,7 +148,16 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
     }, []); // Ensure it runs whenever children change
 
     const enhancedChildren = React.Children.map(children, (child, index) =>
-        React.cloneElement(child, { ...child.props, style:{ marginLeft: '20px' }, id:`field-${index}` ,ref: (ref)=>register(`field-${index}`,ref) })
+        <motion.div
+            variants={itemVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            custom={index}
+            style={{ marginLeft: '20px' }}
+        >
+            {React.cloneElement(child, { ...child.props, style:{ }, id:`field-${index}` ,ref: (ref)=>register(`field-${index}`,ref) })}
+        </motion.div>
     );
 
     const connectWebSocket = async (meetingId, onMessage, onOpen) => {
@@ -169,7 +201,7 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
         if (size < 180) size = 180; 
         // iterate the experts and set the size
         for (const expert_id in refs.current) {
-            if (refs.current[expert_id].setSize) {
+            if (refs.current[expert_id] && refs.current[expert_id].setSize) {
                 //console.log('setting expert size box to',size+'px',size+'px')
                 refs.current[expert_id].setSize(size+'px',size+'px');
             }
@@ -194,6 +226,8 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
 
     // Expose Meeting's methods to parent through ref
     useImperativeHandle(refMain, () => ({ 
+        show: () => setVisible(true),
+        hide: () => setVisible(false),
         getTranscript: () => transcript,    // for parent to get the transcript
         start: async(context,schema,settings)=>{
             // start meeting with given context, and zod output schema
@@ -430,11 +464,30 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
     }));
 
     return (
-        <div>
-            <h1 style={{ color:'#FFF'}}>Meeting</h1> 
-            { task && <center><p style={{ color:'yellow', width:'500px' }}>Task: {task}</p></center> }
-            {enhancedChildren}
-        </div>
+        <AnimatePresence>
+            {isVisible && (
+                <motion.div
+                    initial="hidden"
+                    animate="visible"
+                    exit="hidden"
+                    variants={variants}
+                    transition={{ duration: 0.5 }}
+                >
+                    <h1 style={{ color:'#FFF'}}>Meeting</h1> 
+                    { task && <center><p style={{ color:'yellow', width:'500px' }}>Task: {task}</p></center> }
+                    <div style={{ 
+                            display: 'flex', 
+                            flexDirection: 'row', 
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
+                            width: '100%'
+                        }}>
+                        {enhancedChildren}
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
     );
 });
 

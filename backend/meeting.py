@@ -68,7 +68,7 @@ class Meeting:
         
         system_prompt = "# act as an excellent and engaging writer, expert in adapting the given text to a specific given personality, style and voice. Always consider using a maximum of 140 characters, and always focus on the latest action being done. You speak like a friendly human, removing any unnecessary words and JSON objects and/or parameters."
         if max_tokens > 100:
-            system_prompt = "# act as an excellent and engaging writer, expert in adapting the given text to a specific given personality, style and voice, without loosing content. You speak like a friendly human, removing any unnecessary words and JSON objects and/or parameters."
+            system_prompt = "# act as an excellent and engaging writer, expert in summarizing while adapting the given text to a specific given personality, style and voice, without loosing any content. You speak like a friendly human, removing any unnecessary words and JSON objects and/or parameters. If there's a conclusion or recommendations, always include them."
 
         adaptText = client_instructor_sync.chat.completions.create(
             model="gpt-4o",
