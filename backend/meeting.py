@@ -38,12 +38,14 @@ class Meeting:
         self.experts = []
         self.experts_ = experts
         self.meta = TaskContext(**meta) # full meta data
-        self.name = meta["name"] # TODO refactor code below to use self.meta["key"] instead
-        self.context = meta["context"] 
-        self.task = meta["task"]
-        self.schema = meta["schema"]
-
         self.settings = settings # encrypted settings
+
+        #DEPRECTATED:: soon to be removed
+        #self.name = meta["name"] # TODO refactor code below to use self.meta["key"] instead
+        #self.context = meta["context"] 
+        #self.task = meta["task"]
+        #self.schema = meta["schema"]
+
 
     async def send_data(self, data): 
         try:
@@ -64,11 +66,15 @@ class Meeting:
         class AdaptedStyle(BaseModel):
             new_text: str = Field(None, description="New text adapted to the given personality using a maximum of 140 characters. Don't include either actions and/or action inputs.")
         
+        system_prompt = "# act as an excellent and engaging writer, expert in adapting the given text to a specific given personality, style and voice. Always consider using a maximum of 140 characters, and always focus on the latest action being done. You speak like a friendly human, removing any unnecessary words and JSON objects and/or parameters."
+        if max_tokens > 100:
+            system_prompt = "# act as an excellent and engaging writer, expert in adapting the given text to a specific given personality, style and voice, without loosing content. You speak like a friendly human, removing any unnecessary words and JSON objects and/or parameters."
+
         adaptText = client_instructor_sync.chat.completions.create(
             model="gpt-4o",
             response_model=AdaptedStyle,
             messages=[
-                {"role": "system", "content": "# act as an excellent and engaging writer, expert in adapting the given text to a specific given personality, style and voice. Always consider using a maximum of 140 characters, and always focus on the latest action being done. You speak like a friendly human, removing any unnecessary words and JSON objects and/or parameters."},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": dedent(f"""
                     # Consider the following personality instruction for adapting the text:
                     ```{expert.personality}```
@@ -353,7 +359,7 @@ class Meeting:
             "data": "Improving task definition",
         })
         experts = self.experts
-        task = self.meta
+        task_ = self.meta
         rules = ""
         # add rules to the task description and if they are not empty
         if self.meta.rules:
@@ -363,27 +369,50 @@ class Meeting:
             """)
         # TODO: create instructor call here
         try:
-            improved = client_instructor_sync.chat.completions.create(
-                model="gpt-4",
-                response_model=ImprovedTask, 
-                messages=[
-                    {"role": "system", "content": "# act as an expert prompt engineer. Consider the following JSON object as the context for writing an easier to understand task 'description' that a junior analyst can understand, and a clear 'expected_output' field that describes the expected data output from the given schema in a couple of paragraphs. Check everything prior to sharing with me to ensure accuracy. You only have one shot, so take your time and think step by step."},
-                    {"role": "user", "content": dedent(f"""
-                        # Use the following JSON schema to understand the expected_output:
-                        ```{json.dumps(task.schema)}```
+            improved = None
+            if task_.schema:
+                improved = client_instructor_sync.chat.completions.create(
+                    model="gpt-4",
+                    response_model=ImprovedTask, 
+                    messages=[
+                        {"role": "system", "content": "# act as an expert prompt engineer. Consider the following JSON object as the context for writing an easier to understand task 'description' that a junior analyst can understand, and a clear 'expected_output' field that describes the expected data output from the given schema in a couple of paragraphs. Check everything prior to sharing with me to ensure accuracy. You only have one shot, so take your time and think step by step."},
+                        {"role": "user", "content": dedent(f"""
+                            # Use the following JSON schema to understand the expected_output:
+                            ```{json.dumps(task_.schema)}```
 
-                        # It's most important that you never loose focus on the task expected to be achieved by the user, which is:
-                        ```{task.task}```
+                            # It's most important that you never loose focus on the task expected to be achieved by the user, which is:
+                            ```{task_.task}```
 
-                        # also use the following context:
-                        ```{task.context}```
+                            # also use the following context:
+                            ```{task_.context}```
 
-                        # Now, improve the task description and expected_output fields, also adding a default https schema to any url if not correctly formed:
-                    """)}, 
-                ],
-                temperature=0.0,
-                stream=False, 
-            )
+                            # Now, improve the task description and expected_output fields, also adding a default https schema to any url if not correctly formed:
+                        """)}, 
+                    ],
+                    temperature=0.0,
+                    stream=False, 
+                )
+            else:
+                # improve the task description without schema
+                improved = client_instructor_sync.chat.completions.create(
+                    model="gpt-4",
+                    response_model=ImprovedTask, 
+                    messages=[
+                        {"role": "system", "content": "# act as an expert prompt engineer. Consider the following user given task and the given context for writing an easier to understand task 'description' that a junior analyst can understand, and a clear 'expected_output' field that clearly describes the expected data output in a couple of paragraphs. Check everything prior to sharing with me to ensure accuracy. You only have one shot, so take your time and think step by step."},
+                        {"role": "user", "content": dedent(f"""
+                            # It's most important that you never loose focus on the task expected to be achieved by the user, which is:
+                            ```{task_.task}```
+
+                            # also use the following context:
+                            ```{task_.context}```
+
+                            # Now, improve the task description and expected_output fields, also adding a default https schema to any url if not correctly formed:
+                        """)}, 
+                    ],
+                    temperature=0.0,
+                    stream=False, 
+                )
+
             self.sendDataSync({
                 "action": "improvedTask",
                 "data": improved.model_dump(),
@@ -401,18 +430,31 @@ class Meeting:
         
         # create Task Agent (Coordinator)
         print("DEBUG: creating task agent (coordinator)")
-        coordinator = self.create_task_agent(task, improved)
+        coordinator = self.create_task_agent(task_, improved)
         # TODO: convert task JSON schema into Pydantic model
-        pydantic_schema = json2pydantic(task.schema)
-        print("Pydantic schema", pydantic_schema)
-        # create a task object
-        task = Task(
-            description=improved.description,
-            output_pydantic=pydantic_schema,
-            expected_output=improved.expected_output,
-            async_execution=False,
-            agent=coordinator
-        )
+        task = None
+        pydantic_schema = None
+        if task_.schema:
+            pydantic_schema = json2pydantic(task_.schema)
+            print("Pydantic schema", pydantic_schema)
+            # create a task object
+            task = Task(
+                description=improved.description,
+                output_pydantic=pydantic_schema,
+                expected_output=improved.expected_output,
+                async_execution=False,
+                agent=coordinator
+            )
+        else:
+            # create task without enforcing schema
+            print("Creating task without given schema")
+            # create a task object
+            task = Task(
+                description=improved.description,
+                expected_output=improved.expected_output,
+                async_execution=False,
+                agent=coordinator
+            )
         # build crew
         def task_callback(task_output: TaskOutput):
             # send the task output to the frontend
@@ -459,10 +501,12 @@ class Meeting:
             # raise error to disconnect the meeting
         
         #result = await crew.kickoff_async()
-        result_json:MyBaseModel = result["final_output"]
+        result_json = result["final_output"]
+        if task_.schema:
+            result_json:MyBaseModel = result["final_output"]
         metrics:dict = result["usage_metrics"]
         print("DEBUG: result",result_json)
-        try:
+        try: 
             result_json = result_json.json()
         except Exception as e:
             pass

@@ -6,6 +6,7 @@ import './App.css';
 import HomePage from './pages/HomePage';
 import BrandExample from './pages/BrandExample';
 import PrivacyExample from './pages/PrivacyExample';
+import PrivacyExample2 from './pages/PrivacyExample2';
 
 function NavigationMenu() {
   let navigate = useNavigate();
@@ -15,6 +16,7 @@ function NavigationMenu() {
           <WiredButton style={{ color:'cyan' }} elevation={2} onClick={()=>navigate('/')}>Home</WiredButton>
           <WiredButton style={{ color:'yellow', paddingLeft:'15px' }} elevation={2} onClick={()=>navigate('/brand')}>Brand Example</WiredButton>
           <WiredButton style={{ color:'yellow', paddingLeft:'15px' }} elevation={2} onClick={()=>navigate('/privacy')}>Privacy Example</WiredButton>
+          <WiredButton style={{ color:'orange', paddingLeft:'15px' }} elevation={2} onClick={()=>navigate('/privacy2')}>Privacy Example2</WiredButton>
       </nav>
   );
 }
@@ -31,6 +33,7 @@ function App() {
           <Route path="/" element={<HomePage />} exact />
           <Route path="/brand" element={<BrandExample />} />
           <Route path="/privacy" element={<PrivacyExample />} />
+          <Route path="/privacy2" element={<PrivacyExample2 />} />
         </Routes>
       </div>
     </Router>

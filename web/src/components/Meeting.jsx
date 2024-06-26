@@ -230,13 +230,15 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
                         cmd: 'create_meeting',
                         meta: {
                             context,
-                            schema: zodToJson(schema),
                             name, task, rules: combinedRules 
                         }, 
                         experts,
                         settings: encryptData(settings?settings:{}, obj.key),
                         fingerprint 
                     }; 
+                    if (schema) { // the schema is optional
+                        payload.meta.schema = zodToJson(schema);
+                    }
                     setSessionKey(obj.key); // we need this key to encrypt the data before sending it
                     addTranscript('Fenix',`The user has given us the following task: '${payload.meta.task}'`,'says','Meeting Coordinator');
                     await sentToBackend(payload);
@@ -376,19 +378,23 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
                     refs.current[manager_expert_id].speak("The meeting was completed, check the console output for the data.");
 
                     // final STRUCTURED output of the meeting
-                    let zod_schema = {};  
-                    try {
-                        zod_schema = schema.parse(obj.data);
-                        //console.log('Schema enforced result:', zod_schema);
-                    } catch(e) {
+                    let zod_schema = obj.data;  
+                    if (schema) {
                         try {
-                            zod_schema = dJSON.parse(obj.data);
-                            //console.log('Schema enforced2 result:', zod_schema);
-                        } catch(e2) { 
-                            zod_schema = obj.data;
-                            console.error('Schema enforcement failed:', e);
-                            console.log('Received data:', zod_schema);
-                        }
+                            zod_schema = schema.parse(obj.data);
+                            //console.log('Schema enforced result:', zod_schema);
+                        } catch(e) {
+                            try {
+                                zod_schema = dJSON.parse(obj.data);
+                                //console.log('Schema enforced2 result:', zod_schema);
+                            } catch(e2) { 
+                                zod_schema = obj.data;
+                                console.error('Schema enforcement failed:', e);
+                                console.log('Received data:', zod_schema);
+                            } 
+                        } 
+                    } else {
+                        console.log('Meeting without schema. Final received data:', zod_schema);
                     }
                     // 4. wait for end of meeting, convert output JSON to zod schema and return, and assign raw output to outputKey ref variable
                     setInProgress(false);
