@@ -10,6 +10,7 @@ class CallManager:
         self.language_processor = LanguageModelProcessor("Gabriela",groq_api_key)
         self.synthethizer = VoiceSynthesizer(eleven_labs_api_key, voice_id="aEO01A4wXwd1O8GPgGlF")
         self.not_complete_times = 0
+        self.spoken = []
         #self.notify_manager = WebSocketClient(meeting_id) # where to notify events to the frontend & tools
         self.base_filler_threshold_ms = base_filler_threshold_ms
         self.cooldown_period_ms = cooldown_period_ms
@@ -66,6 +67,7 @@ class CallManager:
     async def trigger_response(self):
         full_sentence = self.transcript_collector.get_full_transcript().strip()
         prev_part = self.transcript_collector.get_previous_sentence()
+        last_spoken = self.spoken[-1] if self.spoken else ""
         current_time = time.time() * 1000
         if full_sentence:
             is_complete = True
@@ -74,7 +76,7 @@ class CallManager:
                 is_complete = await self.language_processor.is_complete_sentence(prev_part, full_sentence)
                 test_took = time.time() * 1000 - test_start_time
                 print(f"Test took {test_took} ms")
-                if self.not_complete_times > 2:
+                if self.not_complete_times > 1:
                     print(f"not_complete_times>1, marking as complete for not repeating fillers too much")
                     is_complete = True
 
@@ -95,7 +97,8 @@ class CallManager:
                 print(f"[{current_time}] Generated Response: {response}")
                 # send the response to the audio_manager
                 self.last_response_time = time.time() * 1000  # Update the last response time
-                audio_duration_ms = await self.send_audio(response, prev_part)
+                audio_duration_ms = await self.send_audio(response, last_spoken)
+                self.spoken.append(response)
                 # Sleep to simulate the playback duration of the response audio
                 audio_duration_seconds = audio_duration_ms / 1000
                 print(f"[{current_time}] Generated Audio duration: {audio_duration_seconds} seconds")
@@ -111,7 +114,7 @@ class CallManager:
     async def trigger_filler(self):
         if not self.transcript_collector.is_history_empty():  # Ensure there's been speech before filler
             current_time = time.time() * 1000
-            print(f"[{current_time}]-muted Inserting filler sound: ahh for {self.callsid}")
+            #print(f"[{current_time}]-muted Inserting filler sound: ahh for {self.callsid}")
             # Here you can trigger the actual audio playback or send a command
             # asyncio.create_task(self.audio_manager.send_filler_sound(self.callsid, "uhmm"))
             #audio_duration_ms = await self.send_audio("ahh")
