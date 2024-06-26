@@ -5,3 +5,4 @@ from utils.VoiceSynthesizer import VoiceSynthesizer
 from utils.CallManager import CallManager
 from utils.cypher import get_encryption_key_base64, decryptJSON
 from utils.WebSocketClient import WebSocketClient
+from utils.AssemblyTranscriber import AssemblyTranscriber
