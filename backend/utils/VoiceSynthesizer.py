@@ -12,25 +12,26 @@ class VoiceSynthesizer:
         }
         self.model_id = "eleven_multilingual_v2"
         self.voice_settings = {
-            "stability": 0.59,
+            "stability": 0.9,
             "similarity_boost": 0.55,
-            "style": 0.0,
+            "style": 0.1,
             "use_speaker_boost": True
         }
         self.audio_cache = {}  # Cache to store preloaded fillers
         self.preload_fillers()
 
     def preload_fillers(self):
-        fillers = ["uhmm", "ahh", "let me see"]
+        fillers = ["uhmm", "ahh"]
         for filler in fillers:
             self.audio_cache[filler] = self.get_audio_base64(filler)
 
-    def text_to_speech(self, text: str) -> tuple[bytes, float]:
-        url = f"{self.base_url}/{self.voice_id}/with-timestamps?optimize_streaming_latency=2&output_format=ulaw_8000"
+    def text_to_speech(self, text: str, previous_text: str = "") -> tuple[bytes, float]:
+        url = f"{self.base_url}/{self.voice_id}/with-timestamps?optimize_streaming_latency=0&output_format=ulaw_8000"
         data = {
             "text": text,
             "model_id": self.model_id,
             "voice_settings": self.voice_settings,
+            "previous_text": previous_text
         }
         response = requests.post(url, json=data, headers=self.headers)
         if response.status_code == 200:
@@ -44,10 +45,10 @@ class VoiceSynthesizer:
             print(f"Error in text-to-speech conversion: {response.status_code}, {response.text}")
             return None, 0
 
-    def get_audio_base64(self, text: str) -> tuple[str, float]:
+    def get_audio_base64(self, text: str, previous_text: str = "") -> tuple[str, float]:
         if text in self.audio_cache:
             return self.audio_cache[text]
-        audio_bytes, duration = self.text_to_speech(text)
+        audio_bytes, duration = self.text_to_speech(text, previous_text)
         if audio_bytes is not None:
             encoded_audio = base64.b64encode(audio_bytes).decode('utf-8')
             self.audio_cache[text] = (encoded_audio, duration)

@@ -107,11 +107,9 @@ async def websocket_endpoint_meeting(websocket: WebSocket, meeting_id: str):
 ### TESTING TWILIO ENDPOINT: we should move this later into the 'call' tool ###
 from twilio.rest import Client
 from pydantic import BaseModel
-#from pydub import AudioSegment
 from utils import CallManager
 
 #mulaw
-DEEPGRAM_WS_URL = "wss://api.deepgram.com/v1/listen?encoding=mulaw&sample_rate=8000&channels=1&multichannel=false&model=nova-2&language=es&punctuate=true&smart_format=false"
 twilio_client = Client(os.getenv('TWILIO_ACCOUNT_SID'), os.getenv('TWILIO_AUTH_TOKEN'))
 call_managers = {}
 meeting_to_callsid = {}
@@ -148,6 +146,7 @@ async def make_call(to_number: str): #request: CallRequest):
 
 async def deepgram_connect():
     import websockets
+    DEEPGRAM_WS_URL = "wss://api.deepgram.com/v1/listen?encoding=mulaw&sample_rate=8000&channels=1&multichannel=false&model=nova-2&language=es&punctuate=true&smart_format=false"
     extra_headers = {
         'Authorization': f'Token {os.getenv("DEEPGRAM_API_KEY")}'
     }
@@ -176,7 +175,7 @@ async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
         await handle_call_end(meeting_id)
     finally:
         if deepgram_ws.open:
-            await deepgram_ws.send(json.dump({
+            await deepgram_ws.send(json.dumps({
                 "type": "CloseStream"
             }))
             await deepgram_ws.close()
@@ -192,7 +191,9 @@ async def deepgram_sender(deepgram_ws, audio_queue):
         if deepgram_ws.open:
             await deepgram_ws.send(chunk)
         else:
+            # we should close the websocket here
             print("Websocket to Deepgram is closed, dropping audio chunk")
+            break
 
 # get the transcription 
 async def deepgram_receiver(deepgram_ws, callsid_queue, meeting_id, audio_manager, stream_sids):
@@ -204,12 +205,16 @@ async def deepgram_receiver(deepgram_ws, callsid_queue, meeting_id, audio_manage
         call_managers[callsid] = CallManager(audio_manager, meeting_id, callsid, stream_sids, os.getenv("GROQ_API_KEY"), os.getenv("ELEVEN_LABS_API_KEY"))
     call_manager = call_managers[callsid]
 
-    async for message in deepgram_ws:
-        #transcript_session
-        #print(f"Received transcription for call {callsid}: {message}")
-        data = json.loads(message)
-        transcription = data.get('channel', {}).get('alternatives', [{}])[0].get('transcript', '')
-        call_manager.add_transcription_part(transcription)
+    try:
+        async for message in deepgram_ws:
+            #transcript_session
+            #print(f"Received transcription for call {callsid}: {message}")
+            data = json.loads(message)
+            transcription = data.get('channel', {}).get('alternatives', [{}])[0].get('transcript', '')
+            call_manager.add_transcription_part(transcription)
+    except Exception as e:
+        if meeting_id in meeting_to_callsid:
+            await handle_call_end(meeting_id)
 
 async def handle_call_end(meeting_id):
     global call_managers

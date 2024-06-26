@@ -1,15 +1,15 @@
 import time, asyncio, random, json, io
-from utils import TranscriptCollector, VoiceSynthesizer, LanguageModelProcessor, WebSocketClient
+from . import TranscriptCollector, VoiceSynthesizer, LanguageModelProcessor, WebSocketClient
 
 class CallManager:
-    def __init__(self, audio_manager, meeting_id, callsid, stream_sids, groq_api_key, eleven_labs_api_key, base_filler_threshold_ms=900, response_threshold_ms=1200, cooldown_period_ms=2000, extended_silence_ms=5000):
+    def __init__(self, audio_manager, meeting_id, callsid, stream_sids, groq_api_key, eleven_labs_api_key, base_filler_threshold_ms=900, response_threshold_ms=2000, cooldown_period_ms=2000, extended_silence_ms=5000):
         self.audio_manager = audio_manager
         self.callsid = callsid
         self.stream_sids = stream_sids
         self.meeting_id = meeting_id
         self.language_processor = LanguageModelProcessor("Gabriela",groq_api_key)
-        self.synthethizer = VoiceSynthesizer(eleven_labs_api_key, voice_id="vzaJvh9C2Ee6ke7crNue")
-        self.notify_manager = WebSocketClient(meeting_id) # where to notify events to the frontend & tools
+        self.synthethizer = VoiceSynthesizer(eleven_labs_api_key, voice_id="aEO01A4wXwd1O8GPgGlF")
+        #self.notify_manager = WebSocketClient(meeting_id) # where to notify events to the frontend & tools
         self.base_filler_threshold_ms = base_filler_threshold_ms
         self.cooldown_period_ms = cooldown_period_ms
         self.response_threshold_ms = response_threshold_ms
@@ -33,7 +33,7 @@ class CallManager:
 
             if not self.transcript_collector.is_empty():
                 if elapsed_time >= self.response_threshold_ms:
-                    self.trigger_response()
+                    await self.trigger_response()
                     #self.reset_timer()
                     continue
 
@@ -47,35 +47,55 @@ class CallManager:
                     self.trigger_filler()
                     self.filler_triggered = True
 
-    def trigger_response(self):
+    def send_audio(self, text, previous_text=""):
+        audio64, audio_duration_ms = self.synthethizer.get_audio_base64(text, previous_text)
+        stream_sid = self.stream_sids.get(self.callsid, None)
+        if stream_sid:
+            payload = {
+                "event": "media",
+                "streamSid": stream_sid,
+                "media": {
+                    "payload": audio64
+                }
+            }
+            asyncio.create_task(self.audio_manager.send_message(json.dumps(payload), self.meeting_id))
+            return audio_duration_ms
+        return 0
+        
+    async def trigger_response(self):
         full_sentence = self.transcript_collector.get_full_transcript().strip()
+        prev_part = self.transcript_collector.get_previous_sentence()
         current_time = time.time() * 1000
         if full_sentence:
-            print(f"[{current_time}] Processing response: {full_sentence}") # for {self.callsid}
-            # TODO: check with groq and instructor if this 'full_sentence' looks indeed like a full sentence or just a part of it
-            # if it's not a full sentence, we should wait for the next part to complete it and just say 'uhmm' or 'I see' or a filler word
-            response = self.language_processor.process(full_sentence)
-            #response = self.process_response(full_transcript)
-            print(f"[{current_time}] Generated Response: {response}")
-            self.last_response_time = time.time() * 1000  # Update the last response time
-            # send the response to the audio_manager
-            audio64, audio_duration_ms = self.synthethizer.get_audio_base64(response)
-            stream_sid = self.stream_sids.get(self.callsid, None)
-            if stream_sid:
-                payload = {
-                    "event": "media",
-                    "streamSid": stream_sid,
-                    "media": {
-                        "payload": audio64
-                    }
-                }
-                asyncio.create_task(self.audio_manager.send_message(json.dumps(payload), self.meeting_id))
+            is_complete = True
+            if full_sentence != prev_part:
+                test_start_time = time.time() * 1000
+                test = await self.language_processor.is_complete_sentence(prev_part, full_sentence)
+                test_took = time.time() * 1000 - test_start_time
+                print(f"Test took {test_took} ms")
+                is_complete = test.does_it_look_complete
 
-            # Sleep to simulate the playback duration of the response audio
-            audio_duration_seconds = audio_duration_ms / 1000
-            print(f"[{current_time}] Generated Audio duration (sleeping): {audio_duration_seconds} seconds")
-            asyncio.create_task(self.handle_response_delay(audio_duration_seconds))
-            self.transcript_collector.reset()  # Reset the transcript collector after processing
+            if is_complete == False:
+                # TODO: check with groq and instructor if this 'full_sentence' looks indeed like a full sentence or just a part of it
+                # if it's not a full sentence, we should wait for the next part to complete it and just say 'uhmm' or 'I see' or a filler word
+                print(f"Response is not complete, waiting for next part",{ "current":full_sentence,"previous":prev_part })
+                audio_duration_ms = self.send_audio("uhmm")
+                self.reset_timer()
+            else:
+                print(f"[{current_time}] Processing response: {full_sentence}") # for {self.callsid}
+                response = self.language_processor.process(full_sentence)
+                #response = self.process_response(full_transcript)
+                print(f"[{current_time}] Generated Response: {response}")
+                
+                # send the response to the audio_manager
+                audio_duration_ms = self.send_audio(response, prev_part)
+
+                # Sleep to simulate the playback duration of the response audio
+                audio_duration_seconds = audio_duration_ms / 1000
+                print(f"[{current_time}] Generated Audio duration (sleeping): {audio_duration_seconds} seconds")
+                asyncio.create_task(self.handle_response_delay(audio_duration_seconds))
+                self.last_response_time = time.time() * 1000  # Update the last response time
+                self.transcript_collector.reset()  # Reset the transcript collector after processing
 
     async def handle_response_delay(self, delay_seconds):
         await asyncio.sleep(delay_seconds)

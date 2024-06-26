@@ -37,6 +37,7 @@ RUN pip install websockets
 # Install others
 RUN pip install pyngrok
 RUN pip install twilio 
+RUN pip install groq 
 RUN pip install deepgram-sdk elevenlabs
 RUN pip install -qU langchain-groq
 
