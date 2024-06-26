@@ -26,13 +26,14 @@ class VoiceSynthesizer:
             self.audio_cache[filler] = self.get_audio_base64(filler)
 
     def text_to_speech(self, text: str, previous_text: str = "") -> tuple[bytes, float]:
-        url = f"{self.base_url}/{self.voice_id}/with-timestamps?optimize_streaming_latency=0&output_format=ulaw_8000"
+        url = f"{self.base_url}/{self.voice_id}/with-timestamps?optimize_streaming_latency=2&output_format=ulaw_8000"
         data = {
             "text": text,
             "model_id": self.model_id,
-            "voice_settings": self.voice_settings,
-            "previous_text": previous_text
+            "voice_settings": self.voice_settings
         }
+        if previous_text and previous_text != text:
+            data["previous_text"] = previous_text
         response = requests.post(url, json=data, headers=self.headers)
         if response.status_code == 200:
             response_json = response.json()

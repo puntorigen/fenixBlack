@@ -76,7 +76,7 @@ class LanguageModelProcessor:
                 }
             ]
         )
-        return test
+        return test.does_it_look_complete
 
     def process(self, text):
         self.memory.chat_memory.add_user_message(text)  # Add user message to memory
