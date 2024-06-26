@@ -1,5 +1,6 @@
 import time, asyncio, random, json, io
-from . import TranscriptCollector, VoiceSynthesizer, LanguageModelProcessor, WebSocketClient
+from . import TranscriptCollector, VoiceSynthesizer, LanguageModelProcessor
+import utils.ws_client as ws_client
 
 class CallManager:
     def __init__(self, audio_manager, meeting_id, callsid, stream_sids, groq_api_key, eleven_labs_api_key, base_filler_threshold_ms=900, response_threshold_ms=2000, cooldown_period_ms=2000, extended_silence_ms=5000):
@@ -11,7 +12,7 @@ class CallManager:
         self.synthethizer = VoiceSynthesizer(eleven_labs_api_key, voice_id="aEO01A4wXwd1O8GPgGlF")
         self.not_complete_times = 0
         self.spoken = []
-        #self.notify_manager = WebSocketClient(meeting_id) # where to notify events to the frontend & tools
+        self.notify_manager = ws_client.WebSocketClient(meeting_id) # where to notify events to the frontend & tools
         self.base_filler_threshold_ms = base_filler_threshold_ms
         self.cooldown_period_ms = cooldown_period_ms
         self.response_threshold_ms = response_threshold_ms
