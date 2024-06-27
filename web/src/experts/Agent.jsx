@@ -36,6 +36,11 @@ const Agent = forwardRef(({
         play: async(tool='search',bgcolor=meta.avatar.bgColor || '#6BD9E9',textDelay=2000) => {
             if (puppetRef.current) {
                 if (tool in meta.tools) {
+                    let tool_meta = {};
+                    if (meta.tools[tool].meta) {
+                        tool_meta = meta.tools[tool].meta;
+                        delete meta.tools[tool].meta;
+                    }
                     let animKey = Object.keys(meta.tools[tool])[0]; // searching
                     let text = meta.tools[tool][animKey];
                     let extra = {};
@@ -43,6 +48,7 @@ const Agent = forwardRef(({
                         extra = { tint: animKey.split(':')[1] };
                         animKey = animKey.split(':')[0];
                     } 
+                    meta.tools[tool].meta = tool_meta;
                     await puppetRef.current.play(animKey,{ bgcolor, ...extra },true);
                     puppetRef.current.avatarSize('30%','#29465B');
                     await puppetRef.current.speak(text,400,150,200,async()=>{

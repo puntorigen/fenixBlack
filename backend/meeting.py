@@ -73,7 +73,7 @@ class Meeting:
         adaptText = client_instructor_sync.chat.completions.create(
             model="gpt-4o",
             response_model=AdaptedStyle, 
-            messages=[ 
+            messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": dedent(f"""
                     # Consider the following personality instruction for adapting the text:

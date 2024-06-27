@@ -6,6 +6,7 @@ export const tools = {
     pdf_reader: 'pdf_reader',
     youtube_video_search: 'youtube_video_search',
     query_visual_website: 'query_visual_website',
+    call: 'phone_call',
 }
 
 export const avatar = {
