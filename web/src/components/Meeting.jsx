@@ -163,7 +163,10 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
             </motion.div>
         );
         setEnhancedChildren(newEnhancedChildren);
-        if (children && children.length != Object.keys(experts).length) {
+        if (children && children.length && children.length != Object.keys(experts).length) {
+            //console.log('reparsing children',children.length,Object.keys(experts).length)
+            parseChildren();
+        } else if (enhancedChildren && enhancedChildren.length && enhancedChildren.length != Object.keys(experts).length) {
             parseChildren();
         }
         //console.log('enhancedChildren regenerated!',experts,newEnhancedChildren);

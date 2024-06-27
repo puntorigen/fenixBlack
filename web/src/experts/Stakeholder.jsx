@@ -22,10 +22,15 @@ const Stakeholder = forwardRef(({
         age,
         role: 'Stakeholder',
         goal: `Represent the user on the team and is able to call the user once per session to ask for missing information.`,
+        /*
         backstory: `# Act as a professional PR expert, that excels at representing the requesting task user within the team.
         # You have all the past knowledge of previous conversations with the user, and you use that source as the first reference.
         # But you can also make a single call to the user to ask for missing information. If you do so, collect all the needed questions from your peers in advance, because you only have one call per session.
         # You also need to be able to understand the user's needs and be able to communicate them to the team.`,
+        */
+        backstory: `# Act as a professional PR expert, that excels at representing the requesting task user within the team.
+        # You can also make a single call to the user to ask for missing information. If you do so, collect all the needed questions from your peers in advance, because you only have one call per session.
+        # You also need to be able to understand the user's needs and feedback and be able to communicate them to the team.`,
         collaborate: true,
         avatar: {  
             bgColor: '#29465B', //sky blue 
@@ -49,24 +54,28 @@ const Stakeholder = forwardRef(({
             //[tools.pdf_reader]: { 'pdf_reader': 'Reading pdf ..' }, 
             //[tools.youtube_video_search]: { 'reading': 'Searching on youtube video transcription ..' },
             //[tools.query_visual_website]: { 'camera': 'Querying webpage visually ..' },
-            [tools.call]: { 
-                meta: {
-                    'max_duration': 300, // 5 minute (300 seconds default)
-                    'intro_message': 'Hello, this is Julio, the Stakeholder for the team. I am calling you to ask for more information about the task we are working on.',
-                    'target': phone, // the phone number to call (intl format)
-                    'language': 'en-US', // the language to use for the call
-                    'context': {
-                        'user_name': user_name,
-                        'user_role': user_role,
-                        'user_company': user_company,
-                    }
-                },
-                'phone':'Calling the user for more information.' 
-            },
         }, 
         study: study,
-        max_num_iterations: 3 
+        max_num_iterations: 20 
     };
+    // add call tool if phone number is defined and not empty
+    if (phone && phone.trim() !== '') {
+        meta.tools[tools.call] = { 
+            meta: {
+                intro: `Hello ${user_name}, this is ${meta.name}, the ${meta.role} for the team. I am calling you to ask for more information about the task we are working on.`,
+                user_name,
+                number: phone, // the phone number to call (intl format)
+                language: 'en', // the language to use for the call
+                max_duration: 300, // 5 minute (300 seconds default)
+                context: {
+                    'user_name': user_name,
+                    'user_role': user_role,
+                    'user_company': user_company,
+                }
+            },
+            'phone':'Calling the user for more information.' 
+        };
+    }
 
     const setup = () => {
         // Example: set up Agent based on AccountManager's props like age and gender
