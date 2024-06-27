@@ -1,4 +1,4 @@
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Any
 from pydantic import BaseModel, Field
 
 class AvatarDetails(BaseModel):
@@ -23,6 +23,7 @@ class Tools(BaseModel):
     pdf_reader: Optional[Dict[str, str]] = Field(None, description="Tool for reading PDF file contents")
     youtube_video_search: Optional[Dict[str, str]] = Field(None, description="Tool for querying the contents of a youtube video")
     query_visual_website: Optional[Dict[str, str]] = Field(None, description="Tool for querying a website url using vision")
+    phone_call: Optional[Dict[str, Any]] = Field(None, description="Tool for having a conversation over a phone call with someone")
   
 class ExpertModel(BaseModel):
     type: Optional[str] = Field(None, description="Type of the object, e.g., 'expert'")

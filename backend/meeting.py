@@ -263,14 +263,26 @@ class Meeting:
             "action": "creating_expert",
             "expert_id": expert.avatar_id,
             "in_progress": True
-        })
+        }) 
         # create list of tools for this expert
         tools = []
-        for key in expert.tools:
-            tool = self.get_tool(key[0])
+        tools_dict = expert.tools.model_dump(exclude_none=True)
+        print(f"DEBUG expert_id ({expert.avatar_id}) tools:", tools_dict)
+        for key,value in tools_dict.items():
+            print(f"DEBUG {expert.avatar_id} expert TOOLS:", key, value)
+            tool = None
+            if value:
+                try:
+                    value = json.loads(value)
+                except Exception as e:
+                    pass
+            if isinstance(value,dict) and "meta" in value:
+                tool = self.get_tool(key, value["meta"], expert.avatar_id)
+            else:
+                tool = self.get_tool(key, value, expert.avatar_id)
             if tool is not None: 
-                self.tool_name_map[tool.name] = key[0]
-                tools.append(tool)
+                self.tool_name_map[tool.name] = key
+                tools.append(tool) 
         # add RAG tool for each 'expert.study' item
         if expert.study:
             for url in expert.study:
@@ -483,7 +495,7 @@ class Meeting:
             memory=False,  
             task_callback=task_callback,
             full_output=True
-        )
+        ) 
         # launch the crew
         print("Starting CREW processing ..")
         try:
@@ -511,7 +523,7 @@ class Meeting:
         except Exception as e:
             pass
         # generate friendly text from the result_json
-        final_expert = ExpertModel(role="virtual",goal="virtual",backstory="virtual",collaborate=True,avatar_id="virtual", personality="Always use 'I' instead of 'You', use easy to understand terms, don't use exagerated words, and speak in the past tense.", max_execution_time=500, max_num_iterations=7)
+        final_expert = ExpertModel(role="virtual",goal="virtual",backstory="virtual",collaborate=True,avatar_id="virtual", personality="Use easy to understand terms, don't use exagerated words, and talk about what was achieved.", max_execution_time=500, max_num_iterations=7)
         final_report = self.adaptTextToPersonality(result_json, final_expert, 4000)
         # reply END to the frontend
         payload = { 
@@ -602,7 +614,8 @@ class Meeting:
             return WebsiteSearchTool(config=self.vector_config("study"), website=url)
         return None
 
-    def get_tool(self, tool_id):
+    def get_tool(self, tool_id, tool_meta, expert_id=None):
+        print(f"DEBUG ({expert_id}) get_tool tool_id",tool_id)
         # get the tool object given the tool_id
         if tool_id == "search":
             from crewai_tools import SerperDevTool
@@ -624,6 +637,13 @@ class Meeting:
         elif tool_id == "query_visual_website": 
             from tools.vision import QueryVisualWebsite 
             return QueryVisualWebsite()
+        elif tool_id == "phone_call":
+            from tools.phone import PhoneCall
+            meta = tool_meta
+            meta["config"] = self.vector_config("phone_call")
+            meta["expert_id"] = expert_id
+            print(f"DEBUG 'meta' call",meta) 
+            return PhoneCall(**meta)
         return None
     
     def create_meeting(self, request):
