@@ -39,6 +39,7 @@ class PhoneCall(BaseTool):
     max_duration: Optional[int] = Field(300, description="Maximum duration of the call in seconds") 
     context: Optional[Any] = Field(None, description="Optional addional context to use over the call")
     config: Optional[Dict[str, Any]] = Field(None, description="VectorDB configuration settings for the tool")
+    meeting_meta: Optional[Dict[str, Any]] = Field(None, description="Requesting meeting meta data for context reference")
  
     def configure(self, **kwargs):
         whitelist = set(self.args_schema.__fields__.keys())
@@ -87,22 +88,37 @@ class PhoneCall(BaseTool):
         session_id = hashlib.md5(os.urandom(32)).hexdigest()
         expert_ = self.expert.model_dump()
         expert_.pop('tools', None)  # remove expert_ 'tools'
+        expert_.pop('avatar', None)  # remove expert_ 'avatar' (visual style)
         # build payload for manager
         payload = {
             "cmd": "phone_call",
             "data": {
-                "session_id": session_id,
-                "number": self.number,
+                #"session_id": session_id,
                 "language": self.language,
+                "user_name": self.user_name,
+                "number": self.number,
+                "intro": self.intro,
                 "objective": self.objective,
                 "queries": self.queries,
                 "max_duration": self.max_duration,
-                "meeting_id": self.meeting_id,
+                "meeting_id": self.meeting_id, # the room where the user is
                 "context": self.context,
+                "expert": expert_,
+                "config": self.config,
+                "meeting_meta": self.meeting_meta
             },
-            "expert": expert_,
-            "config": self.config
         }
+        payload_for_id = {
+            "number": self.number,
+            "user_name": self.user_name,
+            "expert": expert_,
+            "meeting_meta": {
+                "name": self.meeting_meta.get("name"),
+                "task": self.meeting_meta.get("task"),
+            }
+        }
+        # assign the payload session_id as a hash of payload_for_id, for using it with memory
+        payload["data"]["session_id"] = self.generate_md5_session_id(payload_for_id)
         print(f"DEBUG: Payload to send to manager of events", payload)
         # call call_loop with asyncio
         try:
@@ -121,6 +137,11 @@ class PhoneCall(BaseTool):
         # Placeholder for the actual call logic 
         return "Nothing to run yet." 
     
+    def generate_md5_session_id(payload):
+        hash_input = json.dumps(payload, sort_keys=True)
+        hash_output = hashlib.md5(hash_input.encode()).hexdigest()
+        return hash_output
+
     async def call_loop(self, payload):
         # connect to local ws to notify manager of events to perform a call
         client = ws_client.WebSocketClient(self.meeting_id) #the meeting room id from the manager
@@ -131,9 +152,10 @@ class PhoneCall(BaseTool):
             async def on_message(message):
                 nonlocal final_message
                 if 'cmd' in message and message['cmd'] == 'phone_call_ended':
-                    print("End message received. Closing connection. Received:",message)
-                    final_message = message
-                    return True # Return True to indicate the connection should close
+                    if message['session_id'] == payload['data']['session_id']:
+                        print(f"End message for session_id received ({message['session_id']}). Closing connection. Received:",message)
+                        final_message = message
+                        return True # Return True to indicate the connection should close
                 else: 
                     print(f"Received message: {message}")
                 return False

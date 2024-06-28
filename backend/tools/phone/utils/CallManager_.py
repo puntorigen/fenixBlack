@@ -1,6 +1,7 @@
+#from tools.phone.utils import TranscriptCollector, VoiceSynthesizer, LanguageModelProcessor
 import time, asyncio, random, json, io
-from . import TranscriptCollector, VoiceSynthesizer, LanguageModelProcessor
 import utils.ws_client as ws_client
+import tools.phone.utils as phone_utils
 
 class CallManager:
     def __init__(self, audio_manager, meeting_id, callsid, stream_sids, groq_api_key, eleven_labs_api_key, base_filler_threshold_ms=900, response_threshold_ms=2000, cooldown_period_ms=2000, extended_silence_ms=5000):
@@ -8,8 +9,8 @@ class CallManager:
         self.callsid = callsid
         self.stream_sids = stream_sids
         self.meeting_id = meeting_id
-        self.language_processor = LanguageModelProcessor("Gabriela",groq_api_key)
-        self.synthethizer = VoiceSynthesizer(eleven_labs_api_key, voice_id="aEO01A4wXwd1O8GPgGlF")
+        self.language_processor = phone_utils.LanguageModelProcessor("Gabriela",groq_api_key)
+        self.synthethizer = phone_utils.VoiceSynthesizer(eleven_labs_api_key, voice_id="aEO01A4wXwd1O8GPgGlF")
         self.not_complete_times = 0
         self.spoken = []
         self.notify_manager = ws_client.WebSocketClient(meeting_id) # where to notify events to the frontend & tools
@@ -21,7 +22,7 @@ class CallManager:
         self.last_response_time = 0  # Track the last time a response was generated
         self.last_user_speak_time = 0  # Track the last time user spoke
         self.start_time = time.time() * 1000  # Record the start time of the conversation
-        self.transcript_collector = TranscriptCollector()
+        self.transcript_collector = phone_utils.TranscriptCollector()
         self.filler_triggered = False
         self.reset_timer()  # Initialize timer settings
 

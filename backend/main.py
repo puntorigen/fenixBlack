@@ -10,6 +10,12 @@ from db.database import Database
 db = Database()
 load_dotenv()
 public_url = None
+call_sessions = {}
+
+# Call related
+from twilio.rest import Client
+from pydantic import BaseModel
+from tools.phone.utils import CallManager
 
 # Configure logging
 #logging.basicConfig(level=logging.INFO)
@@ -47,6 +53,7 @@ app = FastAPI(lifespan=lifespan)
 
 @app.websocket("/meeting/{meeting_id}")
 async def websocket_endpoint_meeting(websocket: WebSocket, meeting_id: str):
+    global call_sessions
     manager = ConnectionManager() #websocket
     await manager.connect(websocket, meeting_id)
     try: 
@@ -93,8 +100,15 @@ async def websocket_endpoint_meeting(websocket: WebSocket, meeting_id: str):
                 #break
             elif from_frontend["cmd"] == "phone_call":
                 print(f"DEBUG: Received phone call command: {from_frontend}")
+                # create a call session
+                call_sessions[from_frontend["data"]["session_id"]] = from_frontend["data"]
+                # TODO: trigger phone call to requested number
+                # TODO: create cached global session_id for the call data
+                # TODO: create a virtual agent with the 'expert' information to pass it to the LanguageModelProcessor
+                # TODO: when finished, send a message to the 'call tool' with the call data from the CallManager (not here)
                 await manager.send_message(json.dumps({
                     "cmd": "phone_call_ended",
+                    "session_id": from_frontend["data"]["session_id"],
                     "data": "Phone call ended." 
                 }), meeting_id)
                 pass
@@ -112,10 +126,6 @@ async def websocket_endpoint_meeting(websocket: WebSocket, meeting_id: str):
         manager.disconnect(websocket,meeting_id)
 
 ### TESTING TWILIO ENDPOINT: we should move this later into the 'call' tool ###
-from twilio.rest import Client
-from pydantic import BaseModel
-from utils import CallManager
-
 #mulaw
 twilio_client = Client(os.getenv('TWILIO_ACCOUNT_SID'), os.getenv('TWILIO_AUTH_TOKEN'))
 call_managers = {}

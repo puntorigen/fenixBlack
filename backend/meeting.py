@@ -7,6 +7,7 @@ from textwrap import dedent
 from utils.utils import json2pydantic, MyBaseModel, extract_sections
 from utils.cypher import decryptJSON
 import json, os, asyncio, dirtyjson, re
+from contextlib import contextmanager
 
 import instructor
 from openai import AsyncOpenAI, OpenAI
@@ -346,194 +347,205 @@ class Meeting:
             tools=[],
             step_callback=reportAgentStepsSync
         )
-    
+
+    @contextmanager
+    def temporary_env_vars(self, new_vars):
+        old_vars = {key: os.getenv(key) for key in new_vars}
+        try:
+            # Set new environment variables
+            print("DEBUG Setting custom meeting env variables",new_vars)
+            os.environ.update(new_vars)
+            yield
+        finally:
+            # Restore old values
+            for key, value in old_vars.items():
+                if value is None:
+                    del os.environ[key]
+                else:
+                    os.environ[key] = value
+
     def launch_task(self):
         # build a better description for the task using the task context, name and task
         # let frontend kwnow that the task is being created/thinked
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop) 
+        settings_env = self.settings.get("env", {})
 
-        # if self.settings include 'env' then set the environment variables for this thread
-        if self.settings and "env" in self.settings:
-            for key in self.settings["env"]: 
-                if key != "SERVER_KEY":
-                    os.environ[key] = self.settings["env"][key]
-                    #print("DEBUG Setting env variable",key,self.settings["env"][key])
-
-        # create experts
-        for expert in self.experts_:
-            expert_json = ExpertModel(**self.experts_[expert])
-            expert_ = self.create_expert(expert=expert_json)
-            self.experts.append(expert_)
-
-        self.sendDataSync({
-            "action": "createTask",
-            "data": "Improving task definition",
-        })
-        experts = self.experts
-        task_ = self.meta
-        rules = ""
-        # add rules to the task description and if they are not empty
-        if self.meta.rules:
-            rules = dedent(f"""
-                # You must also always follow the rules given by the user, which are:
-                ```{self.meta.rules}```
-            """)
-        # TODO: create instructor call here
-        try:
-            improved = None
-            if task_.schema:
-                improved = client_instructor_sync.chat.completions.create(
-                    model="gpt-4",
-                    response_model=ImprovedTask, 
-                    messages=[
-                        {"role": "system", "content": "# act as an expert prompt engineer. Consider the following JSON object as the context for writing an easier to understand task 'description' that a junior analyst can understand, and a clear 'expected_output' field that describes the expected data output from the given schema in a couple of paragraphs. Check everything prior to sharing with me to ensure accuracy. You only have one shot, so take your time and think step by step."},
-                        {"role": "user", "content": dedent(f"""
-                            # Use the following JSON schema to understand the expected_output:
-                            ```{json.dumps(task_.schema)}```
-
-                            # It's most important that you never loose focus on the task expected to be achieved by the user, which is:
-                            ```{task_.task}```
-
-                            # also use the following context:
-                            ```{task_.context}```
-
-                            # Now, improve the task description and expected_output fields, also adding a default https schema to any url if not correctly formed:
-                        """)}, 
-                    ],
-                    temperature=0.0,
-                    stream=False, 
-                )
-            else:
-                # improve the task description without schema
-                improved = client_instructor_sync.chat.completions.create(
-                    model="gpt-4",
-                    response_model=ImprovedTask, 
-                    messages=[
-                        {"role": "system", "content": "# act as an expert prompt engineer. Consider the following user given task and the given context for writing an easier to understand task 'description' that a junior analyst can understand, and a clear 'expected_output' field that clearly describes the expected data output in a couple of paragraphs. Check everything prior to sharing with me to ensure accuracy. You only have one shot, so take your time and think step by step."},
-                        {"role": "user", "content": dedent(f"""
-                            # It's most important that you never loose focus on the task expected to be achieved by the user, which is:
-                            ```{task_.task}```
-
-                            # also use the following context:
-                            ```{task_.context}```
-
-                            # Now, improve the task description and expected_output fields, also adding a default https schema to any url if not correctly formed:
-                        """)}, 
-                    ],
-                    temperature=0.0,
-                    stream=False, 
-                )
+        with self.temporary_env_vars(settings_env):
+            # create experts
+            for expert in self.experts_:
+                expert_json = ExpertModel(**self.experts_[expert])
+                expert_ = self.create_expert(expert=expert_json)
+                self.experts.append(expert_)
 
             self.sendDataSync({
-                "action": "improvedTask",
-                "data": improved.model_dump(),
+                "action": "createTask",
+                "data": "Improving task definition",
             })
-            print("Improved task", improved.model_dump())
-        except Exception as e:
-            print("DEBUG: improving task ERROR",e)
-            payload = { 
-                "action": "error",
-                "type": "improved_task",
-                "data": str(e)
-            }
-            self.sendDataSync(payload)
-            raise 
-        
-        # create Task Agent (Coordinator)
-        print("DEBUG: creating task agent (coordinator)")
-        coordinator = self.create_task_agent(task_, improved)
-        # TODO: convert task JSON schema into Pydantic model
-        task = None
-        pydantic_schema = None
-        if task_.schema:
-            pydantic_schema = json2pydantic(task_.schema)
-            print("Pydantic schema", pydantic_schema)
-            # create a task object
-            task = Task(
-                description=improved.description,
-                output_pydantic=pydantic_schema,
-                expected_output=improved.expected_output,
-                async_execution=False,
-                agent=coordinator
-            )
-        else:
-            # create task without enforcing schema
-            print("Creating task without given schema")
-            # create a task object
-            task = Task(
-                description=improved.description,
-                expected_output=improved.expected_output,
-                async_execution=False,
-                agent=coordinator
-            )
-        # build crew
-        def task_callback(task_output: TaskOutput):
-            # send the task output to the frontend
+            experts = self.experts
+            task_ = self.meta
+            rules = ""
+            # add rules to the task description and if they are not empty
+            if self.meta.rules:
+                rules = dedent(f"""
+                    # You must also always follow the rules given by the user, which are:
+                    ```{self.meta.rules}```
+                """)
+            # TODO: create instructor call here
             try:
-                # build payload
-                data_json = task_output.raw_output
-                try:
-                    data_json = json.loads(data_json)
-                except Exception as e:
-                    pass
-                payload = {
-                    "action": "raw_output",
-                    "agent": task_output.agent,
-                    "data": data_json
+                improved = None
+                if task_.schema:
+                    improved = client_instructor_sync.chat.completions.create(
+                        model="gpt-4",
+                        response_model=ImprovedTask, 
+                        messages=[
+                            {"role": "system", "content": "# act as an expert prompt engineer. Consider the following JSON object as the context for writing an easier to understand task 'description' that a junior analyst can understand, and a clear 'expected_output' field that describes the expected data output from the given schema in a couple of paragraphs. Check everything prior to sharing with me to ensure accuracy. You only have one shot, so take your time and think step by step."},
+                            {"role": "user", "content": dedent(f"""
+                                # Use the following JSON schema to understand the expected_output:
+                                ```{json.dumps(task_.schema)}```
+
+                                # It's most important that you never loose focus on the task expected to be achieved by the user, which is:
+                                ```{task_.task}```
+
+                                # also use the following context:
+                                ```{task_.context}```
+
+                                # Now, improve the task description and expected_output fields, also adding a default https schema to any url if not correctly formed:
+                            """)}, 
+                        ],
+                        temperature=0.0,
+                        stream=False, 
+                    )
+                else:
+                    # improve the task description without schema
+                    improved = client_instructor_sync.chat.completions.create(
+                        model="gpt-4",
+                        response_model=ImprovedTask, 
+                        messages=[
+                            {"role": "system", "content": "# act as an expert prompt engineer. Consider the following user given task and the given context for writing an easier to understand task 'description' that a junior analyst can understand, and a clear 'expected_output' field that clearly describes the expected data output in a couple of paragraphs. Check everything prior to sharing with me to ensure accuracy. You only have one shot, so take your time and think step by step."},
+                            {"role": "user", "content": dedent(f"""
+                                # It's most important that you never loose focus on the task expected to be achieved by the user, which is:
+                                ```{task_.task}```
+
+                                # also use the following context:
+                                ```{task_.context}```
+
+                                # Now, improve the task description and expected_output fields, also adding a default https schema to any url if not correctly formed:
+                            """)}, 
+                        ],
+                        temperature=0.0,
+                        stream=False, 
+                    )
+
+                self.sendDataSync({
+                    "action": "improvedTask",
+                    "data": improved.model_dump(),
+                })
+                print("Improved task", improved.model_dump())
+            except Exception as e:
+                print("DEBUG: improving task ERROR",e)
+                payload = { 
+                    "action": "error",
+                    "type": "improved_task",
+                    "data": str(e)
                 }
                 self.sendDataSync(payload)
-            except Exception as e:
-                print('DEBUG: task_callback ERROR',e)
+                raise 
+            
+            # create Task Agent (Coordinator)
+            print("DEBUG: creating task agent (coordinator)")
+            coordinator = self.create_task_agent(task_, improved)
+            # TODO: convert task JSON schema into Pydantic model
+            task = None
+            pydantic_schema = None
+            if task_.schema:
+                pydantic_schema = json2pydantic(task_.schema)
+                print("Pydantic schema", pydantic_schema)
+                # create a task object
+                task = Task(
+                    description=improved.description,
+                    output_pydantic=pydantic_schema,
+                    expected_output=improved.expected_output,
+                    async_execution=False,
+                    agent=coordinator
+                )
+            else:
+                # create task without enforcing schema
+                print("Creating task without given schema")
+                # create a task object
+                task = Task(
+                    description=improved.description,
+                    expected_output=improved.expected_output,
+                    async_execution=False,
+                    agent=coordinator
+                )
+            # build crew
+            def task_callback(task_output: TaskOutput):
+                # send the task output to the frontend
+                try:
+                    # build payload
+                    data_json = task_output.raw_output
+                    try:
+                        data_json = json.loads(data_json)
+                    except Exception as e:
+                        pass
+                    payload = {
+                        "action": "raw_output",
+                        "agent": task_output.agent,
+                        "data": data_json
+                    }
+                    self.sendDataSync(payload)
+                except Exception as e:
+                    print('DEBUG: task_callback ERROR',e)
 
-        crew = Crew(
-            agents=experts,
-            tasks=[task],
-            verbose=False,
-            process=Process.hierarchical,
-            manager_llm=ChatOpenAI(model="gpt-4o", temperature=0.0),
-            memory=False,  
-            task_callback=task_callback,
-            full_output=True
-        ) 
-        # launch the crew
-        print("Starting CREW processing ..")
-        try:
-            result = crew.kickoff() 
-        except Exception as e:
-            print("DEBUG: meeting ERROR",e)
+            crew = Crew(
+                agents=experts,
+                tasks=[task],
+                verbose=False,
+                process=Process.hierarchical,
+                manager_llm=ChatOpenAI(model="gpt-4o", temperature=0.0),
+                memory=False,  
+                task_callback=task_callback,
+                full_output=True
+            ) 
+            # launch the crew
+            print("Starting CREW processing ..")
+            try:
+                result = crew.kickoff() 
+            except Exception as e:
+                print("DEBUG: meeting ERROR",e)
+                payload = { 
+                    "action": "error",
+                    "type": "crew_kickoff",
+                    "data": str(e)
+                }
+                self.sendDataSync(payload)
+                raise
+                #self.manager.disconnect(self.meeting_id)
+                # raise error to disconnect the meeting
+            
+            #result = await crew.kickoff_async()
+            result_json = result["final_output"]
+            if task_.schema:
+                result_json:MyBaseModel = result["final_output"]
+            metrics:dict = result["usage_metrics"]
+            print("DEBUG: result",result_json)
+            try: 
+                result_json = result_json.json()
+            except Exception as e:
+                pass
+            # generate friendly text from the result_json
+            final_expert = ExpertModel(role="virtual",goal="virtual",backstory="virtual",collaborate=True,avatar_id="virtual", personality="Use easy to understand terms, don't use exagerated words, and talk about what was achieved.", max_execution_time=500, max_num_iterations=7)
+            final_report = self.adaptTextToPersonality(result_json, final_expert, 4000)
+            # reply END to the frontend
             payload = { 
-                "action": "error",
-                "type": "crew_kickoff",
-                "data": str(e)
-            }
+                "action": "finishedMeeting",
+                "data": result_json,
+                "final_report": final_report,
+                "metrics": metrics,
+                #"tasks": result["tasks_outputs"].dict(),
+            } 
             self.sendDataSync(payload)
-            raise
-            #self.manager.disconnect(self.meeting_id)
-            # raise error to disconnect the meeting
-        
-        #result = await crew.kickoff_async()
-        result_json = result["final_output"]
-        if task_.schema:
-            result_json:MyBaseModel = result["final_output"]
-        metrics:dict = result["usage_metrics"]
-        print("DEBUG: result",result_json)
-        try: 
-            result_json = result_json.json()
-        except Exception as e:
-            pass
-        # generate friendly text from the result_json
-        final_expert = ExpertModel(role="virtual",goal="virtual",backstory="virtual",collaborate=True,avatar_id="virtual", personality="Use easy to understand terms, don't use exagerated words, and talk about what was achieved.", max_execution_time=500, max_num_iterations=7)
-        final_report = self.adaptTextToPersonality(result_json, final_expert, 4000)
-        # reply END to the frontend
-        payload = { 
-            "action": "finishedMeeting",
-            "data": result_json,
-            "final_report": final_report,
-            "metrics": metrics,
-            #"tasks": result["tasks_outputs"].dict(),
-        } 
-        self.sendDataSync(payload)
         return self
 
     def vector_config(self, keyword="youtube"):
@@ -642,6 +654,7 @@ class Meeting:
             meta = tool_meta
             meta["config"] = self.vector_config("phone_call")
             meta["expert"] = expert
+            meta["meeting_meta"] = self.meta.model_dump(exclude_none=True)
             meta["meeting_id"] = self.meeting_id
             #print(f"DEBUG 'meta' call",meta) 
             return PhoneCall(**meta)
