@@ -24,14 +24,14 @@ class WebSocketClient:
             await self.websocket.close()
             print("Disconnected from the WebSocket server.")
 
-    async def send_command(self, command):
+    async def send(self, data):
         """Send a command to the WebSocket server."""
-        message = json.dumps({"cmd": command})
+        message = json.dumps(data)
         if self.websocket:
             await self.websocket.send(message)
             print(f"Sent: {message}")
 
-    async def listen_for_messages(self):
+    async def listen_for_messages(self, on_message):
         """Receive messages from the WebSocket server and process them."""
         try:
             while self.websocket:
@@ -39,7 +39,7 @@ class WebSocketClient:
                 message = json.loads(response)
                 print(f"Received: {message}")
                 # Implement custom handling based on message content
-                if await self.handle_message(message):
+                if await on_message(message):
                     break
         except websockets.exceptions.ConnectionClosed:
             print("Connection with server closed.")

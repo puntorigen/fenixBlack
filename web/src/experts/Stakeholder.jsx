@@ -73,7 +73,7 @@ const Stakeholder = forwardRef(({
                     'user_company': user_company,
                 }
             },
-            'phone':'Calling the user for more information.' 
+            'phone_call':'Calling the user for more information.' 
         };
     }
 

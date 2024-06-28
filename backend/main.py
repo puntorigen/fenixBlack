@@ -91,6 +91,13 @@ async def websocket_endpoint_meeting(websocket: WebSocket, meeting_id: str):
                 break
                 #await current_meeting.launch_task()
                 #break
+            elif from_frontend["cmd"] == "phone_call":
+                print(f"DEBUG: Received phone call command: {from_frontend}")
+                await manager.send_message(json.dumps({
+                    "cmd": "phone_call_ended",
+                    "data": "Phone call ended." 
+                }), meeting_id)
+                pass
             else:
                 print("Unknown payload cmd received from frontend.", from_frontend)
                 break
