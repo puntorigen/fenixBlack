@@ -348,7 +348,9 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
                         play.tool_id = obj.expert_action?.tool_id;
                         play.kind = obj.expert_action?.kind;
                         play.sentences = obj.expert_action.speak;
-                        if (play.sentences) play.sentences = play.sentences.trim();
+                        try {
+                            play.sentences = play.sentences.trim();
+                        } catch(err) {}
                         if (play.sentences==='') {
                             play.valid = false;
                             console.log('DEBUG: EMPTY SENTENCES:',obj);

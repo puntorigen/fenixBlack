@@ -4,13 +4,17 @@ import utils.ws_client as ws_client
 import tools.phone.utils as phone_utils
 
 class CallManager:
-    def __init__(self, audio_manager, meeting_id, callsid, stream_sids, groq_api_key, eleven_labs_api_key, base_filler_threshold_ms=900, response_threshold_ms=2000, cooldown_period_ms=2000, extended_silence_ms=5000):
+    def __init__(self, audio_manager, session_obj, meeting_id, callsid, stream_sids, groq_api_key, eleven_labs_api_key, base_filler_threshold_ms=900, response_threshold_ms=2000, cooldown_period_ms=2000, extended_silence_ms=5000):
         self.audio_manager = audio_manager
         self.callsid = callsid
         self.stream_sids = stream_sids
         self.meeting_id = meeting_id
-        self.language_processor = phone_utils.LanguageModelProcessor("Gabriela",groq_api_key)
+        self.session = session_obj
+        # TODO: use the ExpertSolo class as the language_processor
+        self.language_processor = phone_utils.LanguageModelProcessor(self.session["expert_ref"].expert.name,groq_api_key)
+        # TODO: use the voice_id from ExpertSolo (when available)
         self.synthethizer = phone_utils.VoiceSynthesizer(eleven_labs_api_key, voice_id="aEO01A4wXwd1O8GPgGlF")
+        # TODO: add time tracking for the call to enforce required max_duration and request Expert to trigger end of conversation 
         self.not_complete_times = 0
         self.spoken = []
         self.notify_manager = ws_client.WebSocketClient(meeting_id) # where to notify events to the frontend & tools
@@ -24,9 +28,22 @@ class CallManager:
         self.start_time = time.time() * 1000  # Record the start time of the conversation
         self.transcript_collector = phone_utils.TranscriptCollector()
         self.filler_triggered = False
+        self.welcomed = False
         self.reset_timer()  # Initialize timer settings
 
     async def check_silence(self):
+        if self.welcomed == False:
+            await self.session["notify_ref"].from_tool("phone_call", "Phone call started")
+            # self.session["intro"] should have the intro msg
+            # self.session["language"] should have the required conversation language
+            if self.session["intro"]:
+                # speak intro message - TODO do this within the ExpertSolo class for adapting the intro to the target language
+                # and for using the voice_id from the ExpertSolo (do this here on init)
+                message = self.session["intro"]
+                self.last_response_time = time.time() * 1000  # Update the last response time
+                audio_duration_ms = await self.send_audio(message, "")
+                self.spoken.append(message) 
+            self.welcomed = True
         while True:
             await asyncio.sleep(min(self.filler_threshold_ms, self.response_threshold_ms) / 1000)
             current_time = time.time() * 1000
@@ -94,13 +111,15 @@ class CallManager:
             else:
                 self.not_complete_times = 0
                 print(f"[{current_time}] Processing response: {full_sentence}") # for {self.callsid}
+                await self.session["notify_ref"].from_tool("phone_call", f"[{self.session["user_name"]} said]: {full_sentence}")
                 response = self.language_processor.process(full_sentence)
                 #response = self.process_response(full_transcript)
                 print(f"[{current_time}] Generated Response: {response}")
+                await self.session["notify_ref"].from_tool("phone_call", f"[phone]: {response}") #->{self.session["expert_ref"].expert.name}
                 # send the response to the audio_manager
                 self.last_response_time = time.time() * 1000  # Update the last response time
                 audio_duration_ms = await self.send_audio(response, last_spoken)
-                self.spoken.append(response)
+                self.spoken.append(response) 
                 # Sleep to simulate the playback duration of the response audio
                 audio_duration_seconds = audio_duration_ms / 1000
                 print(f"[{current_time}] Generated Audio duration: {audio_duration_seconds} seconds")
