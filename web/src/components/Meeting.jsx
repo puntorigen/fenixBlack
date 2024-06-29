@@ -380,7 +380,7 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
                             addTranscript(meta_expert.name,play.sentences,'thought',meta_expert.role);
                         } 
                     } else if (play.kind === 'tool') {
-                        //console.log('TOOL NOT USED');
+                        console.log('TOOL NOT USED', obj);
                     }
 
                 } else if (obj?.action === 'raw_output') {

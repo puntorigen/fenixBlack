@@ -15,22 +15,20 @@ class ConnectionManager:
         self.rooms[room_id].append(websocket)
 
     def disconnect(self, websocket: WebSocket, room_id: str):
-        try:
-            #if not self.rooms[room_id]:
-            if self.rooms[room_id]:
+        if room_id in self.rooms:
+            try:
                 self.rooms[room_id].remove(websocket)
-                del self.rooms[room_id]
-                #if room_id in self.keepalive_tasks:
-                #    self.keepalive_tasks[room_id].cancel()
-                #    del self.keepalive_tasks[room_id]
-        except ValueError:
-            pass 
+                # Delete room if empty
+                if not self.rooms[room_id]:
+                    del self.rooms[room_id]
+            except ValueError:
+                pass
 
     async def send_message(self, message: str, room_id: str):
         connections = self.rooms.get(room_id, [])
         for connection in list(connections):  # Copy the list to avoid modification during iteration
             try:
-                print("ConnectionManager->send_message->send_text") #,message)
+                print(f"ConnectionManager->send_message(room:{room_id})->send_text") #,message)
                 await connection.send_text(message)
             except Exception as e:
                 # Handle disconnections or errors

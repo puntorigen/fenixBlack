@@ -55,7 +55,7 @@ class ExpertSolo:
             else:
                 self.embed_chat = App()
             print(f"DEBUG: ExpertSolo created with session_id: {self.session_id}")
-            # add studies if needed 
+            # add studies if needed
             if expert.study:
                 for url in expert.study:
                     print(f"DEBUG: Adding study url: {url}")

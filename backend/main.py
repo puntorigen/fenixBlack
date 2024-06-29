@@ -52,19 +52,19 @@ async def lifespan(app: FastAPI):
     print("Application shutdown.")
 
 app = FastAPI(lifespan=lifespan)
+manager = ConnectionManager() #websocket
 
 @app.websocket("/meeting/{meeting_id}")
 async def websocket_endpoint_meeting(websocket: WebSocket, meeting_id: str):
-    global call_sessions
-    manager = ConnectionManager() #websocket
+    global call_sessions    
     await manager.connect(websocket, meeting_id)
     try: 
         while True:
             data = await websocket.receive_text()
             from_frontend = json.loads(data)
             # TODO: detect command from frontend first
-            if not from_frontend["cmd"]: 
-                break
+            if 'cmd' not in from_frontend: 
+                continue
             if from_frontend["cmd"] == "req_session_key":
                 # first cmd to be received
                 # for secure exchange of data
@@ -72,7 +72,7 @@ async def websocket_endpoint_meeting(websocket: WebSocket, meeting_id: str):
                 encryption_key = get_encryption_key_base64(from_frontend["fingerprint"])
                 await manager.send_message(json.dumps({
                     "action": "session_key",
-                    "key": encryption_key 
+                    "key": encryption_key
                 }), meeting_id)
                 #session = Session(fingerprint=from_frontend["fingerprint"], encryption_key=encryption_key)
                 #db.add(session) 
@@ -149,11 +149,13 @@ async def websocket_endpoint_meeting(websocket: WebSocket, meeting_id: str):
     except WebSocketDisconnect:
         manager.disconnect(websocket,meeting_id)
 
+
 ### TESTING TWILIO ENDPOINT: we should move this later into the 'call' tool ###
 #mulaw
 twilio_client = Client(os.getenv('TWILIO_ACCOUNT_SID'), os.getenv('TWILIO_AUTH_TOKEN'))
 call_managers = {}
 meeting_to_callsid = {}
+audio_manager = ConnectionManager()
 
 class CallRequest(BaseModel):
     to_number: str
@@ -198,7 +200,6 @@ async def deepgram_connect():
 async def websocket_endpoint(websocket: WebSocket, meeting_id: str):
     print("Audio websocket connected")
     ### the websocket endpoint should be kept here
-    audio_manager = ConnectionManager()
     await audio_manager.connect(websocket, meeting_id)
     audio_queue = asyncio.Queue()
     callsid_queue = asyncio.Queue()
