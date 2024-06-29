@@ -1,5 +1,5 @@
 from Crypto.Cipher import AES
-from Crypto.Util.Padding import unpad
+from Crypto.Util.Padding import unpad, pad
 import base64, os, json
 from hashlib import sha256
 
@@ -26,4 +26,20 @@ def decryptJSON(encrypted_data: str, user_id: str):
         return json.loads(decrypted.decode('utf-8'))
     except Exception as e:
         print(f"An error occurred during decryption: {str(e)}")
+        return None
+
+# encrypt version - 28-jun-24
+def encryptJSON(data: dict, user_id: str):
+    try:
+        # Convert the data to a JSON string and then to bytes
+        data_bytes = json.dumps(data).encode('utf-8')
+        encryption_key = get_encryption_key(user_id)
+        iv = os.urandom(AES.block_size)
+        cipher = AES.new(encryption_key, AES.MODE_CBC, iv)
+        cipher_text = cipher.encrypt(pad(data_bytes, AES.block_size))
+        iv_cipher_text = iv + cipher_text
+        encrypted_data = base64.b64encode(iv_cipher_text).decode('utf-8')
+        return encrypted_data
+    except Exception as e:
+        print(f"An error occurred during encryption: {str(e)}")
         return None

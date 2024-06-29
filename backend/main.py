@@ -16,11 +16,13 @@ call_sessions = {}
 from twilio.rest import Client
 from pydantic import BaseModel
 from tools.phone.utils import CallManager
+from schemas import ExpertModel
+from utils import ExpertSolo, messages
 
 # Configure logging
 #logging.basicConfig(level=logging.INFO)
 #logger = logging.getLogger(__name__)
-
+                
 def start_ngrok():
     global public_url
     from pyngrok import ngrok
@@ -91,7 +93,8 @@ async def websocket_endpoint_meeting(websocket: WebSocket, meeting_id: str):
                     experts=from_frontend["experts"],
                     meeting_id=meeting_id,
                     meta=from_frontend["meta"],
-                    settings=from_frontend["settings"]
+                    settings=from_frontend["settings"],
+                    user_fingerprint=from_frontend["fingerprint"]
                 )
                 meet = await asyncio.to_thread(current_meeting.launch_task)
                 meet.loop.stop()
@@ -99,19 +102,40 @@ async def websocket_endpoint_meeting(websocket: WebSocket, meeting_id: str):
                 #await current_meeting.launch_task()
                 #break
             elif from_frontend["cmd"] == "phone_call":
+                # from_frontend["settings"] => contains the USER decrypted envs
                 print(f"DEBUG: Received phone call command: {from_frontend}")
+                session_id = from_frontend["data"]["session_id"]
+                session_envs = decryptJSON(from_frontend["data"]["envs"], from_frontend["data"]["user_fingerprint"])
+                print(f"DEBUG: Decrypted envs: {session_envs}")
                 # create a call session
-                call_sessions[from_frontend["data"]["session_id"]] = from_frontend["data"]
+                call_sessions[session_id] = from_frontend["data"]
+                call_expert = ExpertModel(**from_frontend["data"]["expert"])
+                # notify the user what the tool is doing ('creating expert for the call')
+                notify = messages(
+                    manager=manager,
+                    session_id=session_id, 
+                    expert=call_expert,
+                    meeting_id=meeting_id
+                )
+                call_sessions[session_id]["notify_ref"] = notify
+                await notify.from_tool("phone_call", "Preparing expert for the call")
+                # create an ExpertSolo instance with the expert data
+                call_expert_solo = ExpertSolo(
+                    expert = call_expert,
+                    vector_config = from_frontend["data"]["config"], 
+                    session_id = session_id, 
+                    language = from_frontend["data"]["language"],
+                    envs = session_envs
+                )
+                call_sessions[session_id]["expert_ref"] = call_expert_solo
+                call_sessions[session_id]["envs"] = session_envs
+                await notify.from_tool("phone_call", "Expert ready to make call ..")                
                 # TODO: trigger phone call to requested number
-                # TODO: create cached global session_id for the call data
-                # TODO: create a virtual agent with the 'expert' information to pass it to the LanguageModelProcessor
+                await notify.from_tool("phone_call", f"Calling {call_sessions[session_id]["user_name"]} at {call_sessions[session_id]["number"]} ...")                
+ 
                 # TODO: when finished, send a message to the 'call tool' with the call data from the CallManager (not here)
-                await manager.send_message(json.dumps({
-                    "cmd": "phone_call_ended",
-                    "session_id": from_frontend["data"]["session_id"],
-                    "data": "Phone call ended." 
-                }), meeting_id)
-                pass
+                await notify.to_tool("phone_call_ended",{ "text":"Phone call ended" })
+
             else:
                 print("Unknown payload cmd received from frontend.", from_frontend)
                 break

@@ -56,7 +56,7 @@ const Stakeholder = forwardRef(({
             //[tools.query_visual_website]: { 'camera': 'Querying webpage visually ..' },
         }, 
         study: study,
-        max_num_iterations: 3 
+        max_num_iterations: 4 
     };
     // add call tool if phone number is defined and not empty
     if (phone && phone.trim() !== '') {
@@ -74,7 +74,7 @@ const Stakeholder = forwardRef(({
                 }
             },
             'phone_call':'Calling the user for more information.' 
-        };
+        }; 
     }
 
     const setup = () => {

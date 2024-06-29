@@ -8,7 +8,7 @@ from crewai_tools import BaseTool
 
 import hashlib, os, requests, base64, tempfile, json, asyncio
 from datetime import datetime
-from utils import ws_client
+from utils import ws_client, cypher
 #from backend.schemas import ExpertModel
 
 #db = Database()
@@ -36,10 +36,12 @@ class PhoneCall(BaseTool):
     # mandatory init fields 
     expert: Optional[Any] = Field(None, description="Expert to use for the call style and knowledge")
     meeting_id: Optional[str] = Field(None, description="Meeting ID of the active gathering") 
+    user_fingerprint: Optional[str] = Field(None, description="User fingerprint to use for encrypted comms within user channel")
     max_duration: Optional[int] = Field(300, description="Maximum duration of the call in seconds") 
     context: Optional[Any] = Field(None, description="Optional addional context to use over the call")
     config: Optional[Dict[str, Any]] = Field(None, description="VectorDB configuration settings for the tool")
     meeting_meta: Optional[Dict[str, Any]] = Field(None, description="Requesting meeting meta data for context reference")
+    envs: Optional[Dict[str, Any]] = Field(None, description="Specific meeting environment variables to use for the call")
  
     def configure(self, **kwargs):
         whitelist = set(self.args_schema.__fields__.keys())
@@ -85,10 +87,9 @@ class PhoneCall(BaseTool):
 
         # query expert data as object (role, backstory, studies, etc)
         # invent random unique session id for the call (meeting room)
-        session_id = hashlib.md5(os.urandom(32)).hexdigest()
         expert_ = self.expert.model_dump()
-        expert_.pop('tools', None)  # remove expert_ 'tools'
-        expert_.pop('avatar', None)  # remove expert_ 'avatar' (visual style)
+        #expert_.pop('tools', None)  # remove expert_ 'tools'
+        #expert_.pop('avatar', None)  # remove expert_ 'avatar' (visual style)
         # build payload for manager
         payload = {
             "cmd": "phone_call",
@@ -100,12 +101,13 @@ class PhoneCall(BaseTool):
                 "intro": self.intro,
                 "objective": self.objective,
                 "queries": self.queries,
-                "max_duration": self.max_duration,
+                "max_duration": self.max_duration, 
                 "meeting_id": self.meeting_id, # the room where the user is
                 "context": self.context,
                 "expert": expert_,
                 "config": self.config,
-                "meeting_meta": self.meeting_meta
+                "meeting_meta": self.meeting_meta,
+                "user_fingerprint": self.user_fingerprint,
             },
         }
         payload_for_id = {
@@ -119,10 +121,12 @@ class PhoneCall(BaseTool):
         }
         # assign the payload session_id as a hash of payload_for_id, for using it with memory
         payload["data"]["session_id"] = self.generate_md5_session_id(payload_for_id)
+        # send envs encrypted by user_fingerprint
+        payload["data"]["envs"] = cypher.encryptJSON(self.envs, self.user_fingerprint)
         print(f"DEBUG: Payload to send to manager of events", payload)
         # call call_loop with asyncio
         try:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_event_loop() 
             if loop.is_closed():
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
@@ -137,7 +141,7 @@ class PhoneCall(BaseTool):
         # Placeholder for the actual call logic 
         return "Nothing to run yet." 
     
-    def generate_md5_session_id(payload):
+    def generate_md5_session_id(self, payload):
         hash_input = json.dumps(payload, sort_keys=True)
         hash_output = hashlib.md5(hash_input.encode()).hexdigest()
         return hash_output

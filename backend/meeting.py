@@ -30,7 +30,7 @@ client_instructor_sync = instructor.apatch(OpenAI(api_key=os.getenv("OPENAI_API_
 
 
 class Meeting:
-    def __init__(self, manager, experts, meeting_id, meta, settings):
+    def __init__(self, manager, experts, meeting_id, meta, settings, user_fingerprint):
         self.tool_name_map = {} # map tool names to tool ids
         self.manager = manager 
         self.loop = None
@@ -40,6 +40,7 @@ class Meeting:
         self.experts_ = experts
         self.meta = TaskContext(**meta) # full meta data
         self.settings = settings # encrypted settings
+        self.user_fingerprint = user_fingerprint
 
         #DEPRECTATED:: soon to be removed
         #self.name = meta["name"] # TODO refactor code below to use self.meta["key"] instead
@@ -356,7 +357,7 @@ class Meeting:
             print("DEBUG Setting custom meeting env variables",new_vars)
             os.environ.update(new_vars)
             yield
-        finally:
+        finally: 
             # Restore old values
             for key, value in old_vars.items():
                 if value is None:
@@ -655,7 +656,9 @@ class Meeting:
             meta["config"] = self.vector_config("phone_call")
             meta["expert"] = expert
             meta["meeting_meta"] = self.meta.model_dump(exclude_none=True)
-            meta["meeting_id"] = self.meeting_id
+            meta["meeting_id"] = self.meeting_id # active user channel_id
+            meta["user_fingerprint"] = self.user_fingerprint # required for sending encrypted data to the user channel
+            meta["envs"] = self.settings.get("env", {})
             #print(f"DEBUG 'meta' call",meta) 
             return PhoneCall(**meta)
         return None
