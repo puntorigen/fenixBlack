@@ -15,8 +15,10 @@ const useRefs = () => {
     return [ refs, register ];
 };
 
-const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinish, onError, onDialog, hidden = false }, refMain) => {
+const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onInit, onFinish, onError, onDialog, hidden = false }, refMain) => {
     const [refs, register] = useRefs();
+    const expertSaidHi = useRef({});
+    const launchedInit = useRef({});
     const [isVisible, setVisible] = useState(!hidden);
     const [enhancedChildren, setEnhancedChildren] = useState([]);
     const [experts, setExperts] = useState({});
@@ -61,18 +63,27 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
         hidden: { opacity: 0, scale: 0.95 },
         visible: { opacity: 1, scale: 1 }
     };
-
-    const parseChildren = () => {
-        Object.keys(refs.current).forEach(refName => {
+    
+    const parseChildren = () => { 
+        Object.keys(refs.current).forEach((refName) => {
             if (refs.current[refName] && refs.current[refName].meta) {
                 const meta = refs.current[refName].meta();
                 const avatar_id = refs.current[refName].getID();  // trick to get the ID of the agent
                 if (meta.type === 'expert') {
                     if (!meta.avatar_id) meta.avatar_id = avatar_id;
-                    setExperts(prev => {
-                        return { ...prev, [meta.name+'|'+meta.role]: meta };
-                    })
-                    addTranscript(meta.name,`Hi my name is ${meta.name} and I'm the ${meta.role} in this meeting. My goal is to help in '${meta.goal}'.`,'intro',meta.role);
+                    if (!(`${meta.name}|${meta.role}` in experts)) {
+                        let selfie_bgcolor = meta.avatar.bgColor;
+                        // if selfie_bgcolor is not a valid hex color, set it to a default
+                        if (selfie_bgcolor.length !== 7 || selfie_bgcolor.length !== 4) {
+                            selfie_bgcolor = '#6BD9E9';
+                        }
+                        refs.current[refName].selfie(selfie_bgcolor).then((picture)=>{
+                            meta.picture = picture;
+                            setExperts(prev => {
+                                return { ...prev, [meta.name+'|'+meta.role]: meta };
+                            });
+                        });
+                    }
                 }
             }
         });
@@ -132,10 +143,11 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
 
     useEffect(() => {
         // Log meta information from children
+        //const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         const init = async() => {
             const result = await getBrowserFingerprint();
             setFingerprint(result);
-        };
+        };        
         setTranscript([]);
         addTranscript('Fenix',`Hi my name is Fenix and I'm the Meeting Coordinator. My goal is to 'help the team coordinate tasks between team members and query customer data'.`,'intro','Meeting Coordinator');
         // prepare the children nodes
@@ -150,26 +162,29 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
     }, []); // Ensure it runs whenever children change
 
     useEffect(()=> {
-        const newEnhancedChildren = React.Children.map(children, (child, index) =>
-            <motion.div
-                variants={itemVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                custom={index}
-                style={{ marginLeft: '20px' }}
-            >
-                {React.cloneElement(child, { ...child.props, style:{ }, id:`field-${index}` ,ref: (ref)=>register(`field-${index}`,ref) })}
-            </motion.div>
-        );
-        setEnhancedChildren(newEnhancedChildren);
-        if (children && children.length && children.length != Object.keys(experts).length) {
-            //console.log('reparsing children',children.length,Object.keys(experts).length)
-            parseChildren();
-        } else if (enhancedChildren && enhancedChildren.length && enhancedChildren.length != Object.keys(experts).length) {
-            parseChildren();
-        }
-        //console.log('enhancedChildren regenerated!',experts,newEnhancedChildren);
+        const run = () => {        
+            const newEnhancedChildren = React.Children.map(children, (child, index) =>
+                <motion.div
+                    variants={itemVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    custom={index}
+                    style={{ marginLeft: '20px' }}
+                >
+                    {React.cloneElement(child, { ...child.props, style:{ }, id:`field-${index}` ,ref: (ref)=>register(`field-${index}`,ref) })}
+                </motion.div>
+            );
+            setEnhancedChildren(newEnhancedChildren);
+            if (children && children.length && children.length != Object.keys(experts).length) {
+                //console.log('reparsing children',children.length,Object.keys(experts).length)
+                parseChildren();
+            } else if (enhancedChildren && enhancedChildren.length && enhancedChildren.length != Object.keys(experts).length) {
+                parseChildren();
+            }
+            //console.log('enhancedChildren regenerated!',experts,newEnhancedChildren);
+        };
+        run();
     }, [children])
 
     const connectWebSocket = async (meetingId, onMessage, onOpen) => {
@@ -211,13 +226,26 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
         // limit the max and min sizes
         if (size > 300) size = 300; 
         if (size < 180) size = 180; 
-        // iterate the experts and set the size
         for (const expert_id in refs.current) {
+            // iterate the experts and set the size
             if (refs.current[expert_id] && refs.current[expert_id].setSize) {
                 //console.log('setting expert size box to',size+'px',size+'px')
                 refs.current[expert_id].setSize(size+'px',size+'px');
             }
-        } 
+            // say welcome message if the expert has not said hi
+            if (!expertSaidHi.current[expert_id]) {
+                const meta = refs.current[expert_id].meta();
+                addTranscript(meta.name,`Hi my name is ${meta.name} and I'm the ${meta.role} in this meeting. My goal is to help in '${meta.goal}'.`,'intro',meta.role);
+                expertSaidHi.current[expert_id] = true;
+            }
+        }
+        //
+        if (Object.keys(experts).length > 0 && !launchedInit.current[`num_experts${Object.keys(experts).length}`]) {
+            launchedInit.current[`num_experts${Object.keys(experts).length}`] = true;
+            onInit && onInit(experts);
+        }
+        console.log('debug experts',experts);
+        //
     }, [experts, windowSize.width]);
 
     useEffect(() => {
@@ -462,18 +490,24 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onFinis
         play: async()=>{
             // animate the meeting -> to test the experts
             const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-            Object.keys(refs.current).forEach(async(refName) => {
-                if (refs.current[refName] && refs.current[refName].speak) {
-                    await refs.current[refName].play('search');
-                    await refs.current[refName].speak(`Hello, I am the ${refs.current[refName].meta().role}, and I'm here to help you with your task.`);
+            // animate the meeting -> to test the experts
+            for (const refName of Object.keys(refs.current)) {
+                const currentRef = refs.current[refName];
+                if (currentRef && currentRef.speak) {
+                    await currentRef.play('search');
+                    const role = currentRef.meta().role;
+                    await currentRef.speak(`Hello, I am the ${role}, and I'm here to help you with your task.`);
+                    
                     await sleep(4000);
-                    await refs.current[refName].play('scrape');
+                    await currentRef.play('scrape');
+                    
                     await sleep(5000);
-                    await refs.current[refName].avatarSize('100%');
-                    await refs.current[refName].stop();
+                    await currentRef.avatarSize('100%');
+                    await currentRef.stop();
+
                     await sleep(5000);
                 }
-            }); 
+            }
         }
     }));
 

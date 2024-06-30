@@ -33,7 +33,7 @@ const Stakeholder = forwardRef(({
         # You also need to be able to understand the user's needs and feedback and be able to communicate them to the team.`,
         collaborate: true,
         avatar: {  
-            bgColor: '#29465B', //sky blue 
+            bgColor: 'linear-gradient(45deg, #178bff 0%, #ff6868 100%)', //#29465B @TODO add gradient support -> linear-gradient(45deg, #178bff 0%, #ff6868 100%) 
             hairColor: '#000000', 
             shirtColor: '#F52626',
             skinColor: avatar.skinColor.pale,

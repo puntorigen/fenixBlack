@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle, Su
 import NiceAvatar from '@nice-avatar-svg/react';
 import lottie from 'lottie-web';
 import { replaceColor, flatten } from 'lottie-colorify';
+//import { toPng, toJpeg, toSvg } from 'dom-to-image-more-fonts';
+//import { toPng, toJpeg, toBlob, toPixelData, toSvg } from 'html-to-image';
+import render from "@nice-avatar-svg/render";
 
 const Puppet = forwardRef(({
     bgColor="#6BD9E9", 
@@ -180,13 +183,46 @@ const Puppet = forwardRef(({
         lookLeft: () => setOrientation({ ...orientation, flipped: true }),
         lookRight: () => setOrientation({ ...orientation, flipped: false }),
         lookUp: () => setOrientation({ ...orientation, look: 'up' }),   // Additional implementation needed for visual effect
-        lookDown: () => setOrientation({ ...orientation, look: 'down' })  // Additional implementation needed for visual effect
+        lookDown: () => setOrientation({ ...orientation, look: 'down' }),  // Additional implementation needed for visual effect
+        selfie: async(backgroundColor=bgColor) => {
+            // take picture of our SVG and return it as an image data url (to use on chat for example)
+            // approach 2: re-render a special SVG version with the same params
+            const svgToDataURL = svgStr => {
+                const encoded = encodeURIComponent(svgStr)
+                    .replace(/'/g, '%27')
+                    .replace(/"/g, '%22')
+            
+                const header = 'data:image/svg+xml,'
+                const dataUrl = header + encoded
+            
+                return dataUrl
+            };
+            const svg = await render({
+                bgColor: backgroundColor,
+                earSize,
+                eyesStyle: 'base',
+                facialHairStyle,
+                hairColor,
+                hairStyle,
+                mouthStyle: 'smile',
+                noseStyle,
+                shirtColor,
+                shirtStyle,
+                skinColor,
+                earRing: false,
+                eyebrowsStyle,
+                glassesStyle,
+                shape: 'circle'
+            });
+            //console.log('svg of avatar:',svg);
+            return svgToDataURL(svg);
+        }
     }));
 
     return (
         <div style={{ position: 'relative', width, height, display: 'inline-block', fontSize: 0, overflow: 'visible', ...style }}>
             { label && (<div className="nameTag">{label}</div>) }
-            <div ref={animationContainer} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, backgroundColor: currentBgColor }} />
+            <div ref={animationContainer} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, background: currentBgColor }} />
             <div style={{ transform: transformStyle, transformOrigin: transformOrigin, position: 'relative', zIndex: 0, ...transitionStyle }}>
                 <Suspense fallback={"Loading ..."}><NiceAvatar
                     shape="square"
