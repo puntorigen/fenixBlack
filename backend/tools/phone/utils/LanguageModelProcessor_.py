@@ -17,7 +17,7 @@ import instructor
 from openai import AsyncOpenAI, OpenAI
 from groq import Groq
 from pydantic import BaseModel, Field
-from typing import Literal
+from typing import Literal 
 
 groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 groq_client = instructor.from_groq(groq_client, mode=instructor.Mode.TOOLS)

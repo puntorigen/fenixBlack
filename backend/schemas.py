@@ -40,6 +40,7 @@ class ExpertModel(BaseModel):
     study: Optional[List[str]] = Field(None, description="Optional list of URLs for learning resources related to the expert")
     max_execution_time: int = Field(..., description="Maximum number of seconds the expert can work on a task")
     max_num_iterations: Optional[int] = Field(7, description="Maximum number of iterations the expert can work on a task. More is smarter.")
+    smart_level: Optional[int] = Field(2, description="Smartness level, from 1 to 3, being 1 the dumbest available (grok), 2 (gpt-4o), 3 the smartest available (gpt-4).")
 
 class TaskContext(BaseModel):
     context: str = Field(..., description="The context of the task")

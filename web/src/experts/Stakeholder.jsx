@@ -6,7 +6,8 @@ const Stakeholder = forwardRef(({
     id="stakeholder",
     name="Julio",
     age=23,
-    phone="+12345678901", // international format "+1 234 567 8901
+    target_phone="+12345678901", // international format "+1 234 567 8901
+    target_language="es-CL",
     user_name="Pablo",
     user_role="CEO",
     user_company="",
@@ -56,17 +57,19 @@ const Stakeholder = forwardRef(({
             //[tools.query_visual_website]: { 'camera': 'Querying webpage visually ..' },
         }, 
         study: study,
-        max_num_iterations: 4 
+        max_num_iterations: 4,
+        smart_level: 3, // 3 is the smartest
     };
     // add call tool if phone number is defined and not empty
-    if (phone && phone.trim() !== '') {
+    if (target_phone && target_phone.trim() !== '') {
         meta.tools[tools.call] = { 
             meta: {
                 intro: `Hello ${user_name}, this is ${meta.name}, the ${meta.role} for the team. I am calling you to ask for more information about the task we are working on.`,
                 user_name,
-                number: phone, // the phone number to call (intl format)
-                language: 'en', // the language to use for the call
+                number: target_phone, // the phone number to call (intl format)
+                language: target_language, // the language to use for the call
                 max_duration: 300, // 5 minute (300 seconds default)
+                voice_id: 'lXungVpcYL0ZWZJIiefW', // the elevenlabs voice id to use for the call
                 context: {
                     'user_name': user_name,
                     'user_role': user_role,

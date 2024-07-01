@@ -113,14 +113,14 @@ async def websocket_endpoint_meeting(websocket: WebSocket, meeting_id: str):
                 # notify the user what the tool is doing ('creating expert for the call')
                 notify = messages(
                     manager=manager,
-                    session_id=session_id, 
+                    session_id=session_id,
                     expert=call_expert,
                     meeting_id=meeting_id
                 )
                 call_sessions[session_id]["notify_ref"] = notify
                 await notify.from_tool("phone_call", "I'm preparing for the call")
                 # create an ExpertSolo instance with the expert data
-                call_expert_solo = ExpertSolo(
+                call_expert_solo = ExpertSolo( 
                     expert = call_expert,
                     session_data = from_frontend["data"],
                     vector_config = from_frontend["data"]["config"], 
@@ -161,9 +161,13 @@ call_managers = {}
 meeting_to_callsid = {}
 audio_manager = ConnectionManager()
 
-async def deepgram_connect():
-    import websockets
-    DEEPGRAM_WS_URL = "wss://api.deepgram.com/v1/listen?encoding=mulaw&sample_rate=8000&channels=1&multichannel=false&model=nova-2&language=es&punctuate=true&smart_format=false"
+async def deepgram_connect(language="es"):
+    import websockets 
+    print(f"DEBUG: connecting deepgram websocket for language: {language}")
+    # english listening is the default
+    DEEPGRAM_WS_URL = "wss://api.deepgram.com/v1/listen?encoding=mulaw&sample_rate=8000&channels=1&multichannel=false&model=nova-2-phonecall&language=en&punctuate=true&smart_format=true"
+    if language in ["es","es-ES","es-CL"]:
+        DEEPGRAM_WS_URL = "wss://api.deepgram.com/v1/listen?encoding=mulaw&sample_rate=8000&channels=1&multichannel=false&model=nova-2&language=es&punctuate=true&smart_format=false"
     extra_headers = {
         'Authorization': f'Token {os.getenv("DEEPGRAM_API_KEY")}'
     }
@@ -218,10 +222,12 @@ async def call_status(session_id: str, meeting_id: str, request: Request):
 async def websocket_endpoint(websocket: WebSocket, session_id: str, meeting_id: str):
     print("Audio websocket connected")
     ### the websocket endpoint should be kept here
+    global call_sessions
     await audio_manager.connect(websocket, meeting_id)
     audio_queue = asyncio.Queue()
     callsid_queue = asyncio.Queue()
-    deepgram_ws = await deepgram_connect()
+    session_obj = call_sessions[session_id]
+    deepgram_ws = await deepgram_connect(session_obj["language"])
     stream_sids = {} #dict mapping callsid to streamSid
 
     try:

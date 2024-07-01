@@ -12,11 +12,11 @@ from utils import ws_client, cypher
 #from backend.schemas import ExpertModel
 
 #db = Database()
-class PhoneCallQuery(BaseModel):
+class PhoneCallQuery(BaseModel): 
     intro: Optional[str] = Field(None, description="Optional introduction to use before starting the call")
     user_name: Optional[str] = Field(None, description="Optional user name of target user to call; never invent it if unknown.")
     number: str = Field(..., description="Mandatory international format number to dial to")
-    language: Literal["en","es"] = Field("en", description="Language code to use for the conversation")
+    language: Optional[str] = Field("en-US", description="Language code to use for the conversation, like en-US, en-GB, en, es, es-CL, es-ES, etc.")
     objective: str = Field(..., description="Objective to use as validation to know when the call should end.")
     queries: List[str] = Field([], description="List of queries to perform during the call")
 
@@ -29,7 +29,7 @@ class PhoneCall(BaseTool):
     intro: Optional[str] = Field(None, description="Optional introduction to use before starting the call")
     user_name: Optional[str] = Field(None, description="Optional user name of target user to call; never invent it if unknown.")
     number: Optional[str] = Field(None, description="Mandatory international format number to dial to")
-    language: Literal["en","es"] = Field("en", description="Language code to use for the conversation")
+    language: Optional[str] = Field("en-US", description="Language code to use for the conversation, like en-US, en-GB, en, es, es-CL, es-ES, etc.")
     objective: Optional[str] = Field(..., description="Objective to use as validation to know when the call should end.")
     queries: Optional[List[str]] = Field([], description="List of queries to perform during the call")
      
@@ -41,8 +41,9 @@ class PhoneCall(BaseTool):
     context: Optional[Any] = Field(None, description="Optional addional context to use over the call")
     config: Optional[Dict[str, Any]] = Field(None, description="VectorDB configuration settings for the tool")
     meeting_meta: Optional[Dict[str, Any]] = Field(None, description="Requesting meeting meta data for context reference")
+    voice_id: Optional[str] = Field("aEO01A4wXwd1O8GPgGlF", description="Voice ID to use for the call; default Arabella")
     envs: Optional[Dict[str, Any]] = Field(None, description="Specific meeting environment variables to use for the call")
- 
+  
     def configure(self, **kwargs):
         whitelist = set(self.args_schema.__fields__.keys())
 
@@ -107,8 +108,9 @@ class PhoneCall(BaseTool):
                 "expert": expert_,
                 "config": self.config,
                 "meeting_meta": self.meeting_meta,
+                "voice_id": self.voice_id,
                 "user_fingerprint": self.user_fingerprint,
-            },
+            }, 
         }
         payload_for_id = {
             "number": self.number,

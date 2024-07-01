@@ -30,7 +30,8 @@ const Agent = forwardRef(({
             // default personality
             personality: `Always use 'I' instead of 'You', use easy to understand terms, don't use exagerated words, and be straightfoward on the tasks you are going to perform.`,            
             max_execution_time: 60*5,   // 5 minutes
-            max_num_iterations: 7       // 7 iterations; 25 default, but less is cheaper
+            max_num_iterations: 7,       // 7 iterations; 25 default, but less is cheaper
+            smart_level: 2,             // 1-3 (groq, gpt-4o, gpt-4), 2 is the default
         }, ...meta }), 
         setSize: (width, height) => setSize({ width, height }),
         play: async(tool='search',bgcolor=meta.avatar.bgColor || '#6BD9E9',textDelay=2000) => {

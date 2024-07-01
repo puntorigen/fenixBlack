@@ -11,7 +11,7 @@ def get_max_num_iterations(desired_num_iterations=5):
         return max_num_iterations
     return desired_num_iterations
 
-def get_llm(openai="gpt-4",ollama="phi3:3.8b-mini-128k-instruct-q8_0", temperature=0):
+def get_llm(openai="gpt-4",ollama="phi3:3.8b-mini-128k-instruct-q8_0", groq=None, temperature=0):
     if os.getenv('LLM_TYPE') == "ollama":
         base_url = os.getenv('OPENAI_API_BASE') or "http://localhost:11434"
         #return Ollama(model=ollama, temperature=temperature, num_predict=-1, base_url=base_url)
@@ -20,6 +20,9 @@ def get_llm(openai="gpt-4",ollama="phi3:3.8b-mini-128k-instruct-q8_0", temperatu
             base_url=f"{base_url}/v1",
             temperature=0,
             model = ollama)
+    elif groq is not None and os.environ.get("GROQ_API_KEY"):
+        from langchain_groq import ChatGroq
+        return ChatGroq(temperature=temperature, model_name="mixtral-8x7b-32768", groq_api_key=os.environ.get("GROQ_API_KEY"))
     else:
         return ChatOpenAI(model = openai, temperature=temperature)
     

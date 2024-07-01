@@ -11,6 +11,14 @@ from contextlib import contextmanager
 
 from twilio.rest import Client
 from twilio.twiml.voice_response import VoiceResponse, Gather, Say, Stream, Connect
+import tools.phone.utils as phone_utils
+
+# helper utils (is_sentence_complete, etc)
+import instructor
+from openai import AsyncOpenAI
+from pydantic import BaseModel, Field
+from typing import Literal
+from langcodes import Language as LangCode
 
 @contextmanager
 def temporary_env_vars(new_vars):
@@ -35,31 +43,31 @@ class ExpertSolo:
         self.session_id = session_id
         self.session_data = session_data # this has all of the phone call session data: user_name, etc
         self.language = language
+        self.language_full = LangCode.get(self.language).display_name()
         self.envs = envs
         self.expert = expert
         self.public_url = public_url
-        meeting_meta = self.session_data.get('meeting_meta', {})
-        self.system_prompt = f"""# You are {self.expert.role}. {self.expert.backstory}\nYour personal goal is: {self.expert.goal}
-        # Your name is {self.expert.name} and you are {self.expert.age} years old. You're having a conversation with {self.session_data.get('user_name', 'someone')} over the phone.
-        # You called because you are participating on a group meeting at "Fenix Black" about an assigned task that has the context of '{meeting_meta.get('context', 'unknown')}'.
-        # Your group meeting has the following queries you need to get from the user: 
+        self.system_prompt = f"""# Your name is '{self.expert.name}', and your role is a '{self.expert.role}'. {self.expert.backstory}\nYour personal goal this session is: '{self.expert.goal}'
+        # You have {self.expert.age} years of experience in call centers and are an expert negociator. You're having a conversation with {self.session_data.get('user_name', 'someone')} over the phone.
+        # You called {self.session_data.get('user_name', '')} because you need him/her to answer the following questions/queries: 
         ```
-        {meeting_meta.get('queries', {}).model_dump()}
+        {str(self.session_data.get('queries', {}))}
         ```
         # Your objective for this chatting session is to get the user to answer all of these questions/queries in a natural conversation manner.
-        # You may ask the user to repeat or clarify the questions if needed.
+        # You may ask the user to repeat or clarify the questions if needed, but never repeat the same thing that the user said. Focus on the required questions.
         """
         if self.session_data.get('intro'):
-            self.system_prompt += f"""# The first message said to the user was: {self.session_data.get('intro')}."""
-            self.chat_history.append({ "role":"expert", "text":self.session_data.get('intro'), "sources":None })
-        if self.language == "es":
+            self.system_prompt += f"""# The first message you said to the user was: {self.session_data.get('intro')}."""
+            self.chat_history.append({ "role":"expert", "text":self.session_data.get('intro') })
+        # if language includes es, or es-* then add spanish instructions
+        if self.language in ["es", "es-MX", "es-ES"] or self.language.startswith("es-"):
             self.system_prompt += f"""
 # You need to make sure to always reply in spanish, and to be patient with the user, but always reply in spanish.
             """
         print(f"DEBUG: ExpertSolo system_prompt: {self.system_prompt}")
         self.query_config = BaseLlmConfig(
             number_documents=5, 
-            temperature=0.3,
+            temperature=0.1,
             #set system prompt to expert role, backstory and goal
             system_prompt=self.system_prompt
         )
@@ -69,10 +77,28 @@ class ExpertSolo:
         print("Creating ExpertSolo instance ..")
 
         with temporary_env_vars(self.envs):
+            self.client_instructor = instructor.apatch(AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY")))
+            print(f"DEBUG: using voice_id: {self.session_data.get('voice_id', 'aEO01A4wXwd1O8GPgGlF')} for ExpertSolo Voice")
+            if os.getenv("ELEVEN_LABS_API_KEY") is None:
+                print("ERROR: ELEVEN_LABS_API_KEY not found in environment variables (can't use phone_call tool)")
+                raise "ERROR: ELEVEN_LABS_API_KEY not found in environment variables"
+            self.synthethizer = phone_utils.VoiceSynthesizer(os.getenv("ELEVEN_LABS_API_KEY"), voice_id=self.session_data.get('voice_id', 'aEO01A4wXwd1O8GPgGlF'))
+            self.basic_config = {
+                "llm": {
+                    "provider": "openai",
+                    "config": {
+                        "model": "gpt-4o",
+                        "temperature": 0.1,
+                        "max_tokens": 200,
+                        "top_p": 1.0
+                    }
+                },
+            }
             if vector_config:
-                self.embed_chat = App.from_config(config=vector_config)
+                self.basic_config.update(vector_config)
+                self.embed_chat = App.from_config(config=self.basic_config)
             else:
-                self.embed_chat = App()
+                self.embed_chat = App.from_config(config=self.basic_config)
             print(f"DEBUG: ExpertSolo created with session_id: {self.session_id}")
             # add studies if needed
             if expert.study:
@@ -83,38 +109,78 @@ class ExpertSolo:
     def query(self, question:str):
         with temporary_env_vars(self.envs):
             self.chat_history.append({ "role":"user", "text":question })
-            answer, sources = self.embed_chat.chat(question, citations=True, session_id=self.session_id, config=self.query_config)
-            self.chat_history.append({ "role":"expert", "text":answer, "sources":sources })
-            return (answer, sources)
+            answer = self.embed_chat.chat(question, citations=False, session_id=self.session_id, config=self.query_config)
+            self.chat_history.append({ "role":"expert", "text":answer })
+            return answer
+            #return (answer, sources)
 
     def get_chat_history(self):
         return self.chat_history
     
     # TODO: create method to check if user has answered all queries in chat_history
-    # TODO: create method to translate intro message to language if not english; lets just use direct query
-    # TODO: create method to test if given sentence is a complete sentence
+    # DONE: create method to translate intro message to language if not english; lets just use direct query
+    async def translate_from_english(self, english_sentence, target_language:str = None):
+        if target_language is None:
+            target_language = self.language_full
+        class Response(BaseModel):
+            translated_sentence: str = Field(True, description=f"Translated sentence in {target_language}")
+
+        run_ = await self.client_instructor.chat.completions.create(
+            model="gpt-4", #"mixtral-8x7b-32768", #llama3-8b-8192",
+            response_model=Response,
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"""# You're an expert translator, and you need to translate the following sentence from English to '{target_language}':
+                    ```{english_sentence}```
+                    """
+                }
+            ]
+        )
+        return run_.translated_sentence
+
     # TODO: create llm method to detect if a given sentence means farewell in any language (to hangup and end the call)
+
+    # DONE: create method to test if given sentence is a complete sentence
+    async def is_complete_sentence(self, prev_sentence,current_sentence):
+        class DoesSentenceAppearComplete(BaseModel):
+            does_it_look_complete: bool = Field(True, description="Does the sentence appear to be complete?")
+        test = await self.client_instructor.chat.completions.create(
+            model="gpt-4o", #"mixtral-8x7b-32768", #llama3-8b-8192",
+            response_model=DoesSentenceAppearComplete,
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"""# the following is the previous part of the sentence:
+                    ```{prev_sentence}```
+                    # is the following sentence complete or do you think there's more to come? 
+                    ```{current_sentence}```
+                    """
+                }
+            ]
+        )
+        return test.does_it_look_complete
 
     def set_closing_prompt(self):
         # method to change system_prompt to provide a closing chat flow for the following user messages.
         meeting_meta = self.session_data.get('meeting_meta', {})
-        self.system_prompt = f"""# You are {self.expert.role}. {self.expert.backstory}\nYour personal goal is: {self.expert.goal}
-        # Your name is {self.expert.name} and you are {self.expert.age} years old. You're having a conversation with {self.session_data.get('user_name', 'someone')} over the phone.
+        self.system_prompt = f"""# Your name is '{self.expert.name}', and your role is a '{self.expert.role}'. {self.expert.backstory}\nYour personal goal this session is: '{self.expert.goal}'
+        # You are {self.expert.age} years old. You're having a conversation with {self.session_data.get('user_name', 'someone')} over the phone.
         # You called because you are participating on a group meeting at "Fenix Black" about an assigned task that has the context of '{meeting_meta.get('context', 'unknown')}'.
-        # Your group meeting has the following queries you need to get from the user: 
+        # Your group meeting has the following queries for which you need to query the user about: 
         ```
-        {meeting_meta.get('queries', {}).model_dump()}
+        {str(self.session_data.get('queries', {}))}
         ```
-        # The user has just finished answering all the queries. You can now provide a natural flowing closing message to end the conversation in a natural way. Always be nice, be grateful of the time the user gave you and ask if the user needs to say any additional thing.
-        # Be sure to always say 'goodbye' or 'adios' when you think the conversation is over.
+        # Your objective for this chatting session is to get the user to answer all of these questions/queries in a natural conversation manner.
+        # You may ask the user to repeat or clarify the questions if needed.
         """
-        if self.language == "es":
+        if self.language in ["es", "es-MX", "es-ES"] or self.language.startswith("es-"):
             self.system_prompt += f"""
 # You need to make sure to always reply in spanish, and to be patient with the user, but always reply in spanish.
             """
         self.query_config = BaseLlmConfig(
             number_documents=5, 
-            temperature=0.3,
+            temperature=0.02,
             system_prompt=self.system_prompt
         )
 
@@ -128,7 +194,7 @@ class ExpertSolo:
             ## grab the first available phone number - TODO: get definition from ExpertModel when we have an admin
             from_number = incoming_phone_numbers[0].phone_number
             response = VoiceResponse()
-            if self.language == "es":
+            if self.language in ["es", "es-MX", "es-ES"] or self.language.startswith("es-"):
                 response.say("Hola, te estamos llamando de Fenix. Por favor, espera mientras te conecto con un experto.", voice="alice", language="es-MX")
             else:
                 response.say("Hi there, we are calling from Fenix. Please wait while we connect you with an expert.", voice="alice", language="en-US")

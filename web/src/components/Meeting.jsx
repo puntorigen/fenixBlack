@@ -30,8 +30,8 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onInit,
     const [sessionKey, setSessionKey] = useState(''); // session key for secure communication with backend
     const [fingerprint, setFingerprint] = useState(''); // unique user fingerprint (or userid)
     const [transcript, setTranscript] = useState([]);
-    const addTranscript = (speaker,message,type='thought',role='coordinator') => {
-        let obj = { speaker, role, type, message };
+    const addTranscript = (speaker,message,type='thought',role='coordinator', tool_id) => {
+        let obj = { speaker, role, type, message, tool_id };
         obj.date = new Date();
         obj.time = obj.date.toLocaleTimeString();
         if (type === 'thought') {
@@ -396,7 +396,7 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onInit,
                                 await refs.current[play.expert_id].stop();
                             });
                             const meta_expert = refs.current[play.expert_id].meta();
-                            addTranscript(meta_expert.name,play.sentences,'says',meta_expert.role);
+                            addTranscript(meta_expert.name,play.sentences,'says',meta_expert.role,play.tool_id);
                         }
                     } else if (play.valid === true && play.kind === 'thought') {
                         console.log('DEBUG: NEW THOUGHT DETECTED:',obj);

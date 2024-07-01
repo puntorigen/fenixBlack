@@ -263,7 +263,7 @@ class Meeting:
     def create_expert(self, expert: ExpertModel):
         self.sendDataSync({
             "action": "creating_expert",
-            "expert_id": expert.avatar_id,
+            "expert_id": expert.avatar_id,  
             "in_progress": True
         }) 
         # create list of tools for this expert
@@ -298,6 +298,16 @@ class Meeting:
             self.reportAgentStepsSync2(step_output, expert)
 
         # create an expert
+        llm = None
+        if expert.smart_level == 1:
+            llm = get_llm(groq=True, temperature=0.0)
+        elif expert.smart_level == 2:
+            llm = get_llm(openai="gpt-4o", temperature=0.0)
+        elif expert.smart_level == 3:
+            llm = get_llm(openai="gpt-4", temperature=0.1)
+        else:
+            llm = get_llm(openai="gpt-4o", temperature=0.0)
+ 
         temp = Agent(
             role=expert.role,
             goal=expert.goal,
@@ -307,7 +317,7 @@ class Meeting:
             allow_delegation=expert.collaborate,
             max_execution_time=expert.max_execution_time,
             max_iter=expert.max_num_iterations, #get_max_num_iterations(7),
-            llm=get_llm(openai="gpt-4o", temperature=0.0), #gpt-4 temp 0.1, works best, but it's pricier
+            llm=llm, #gpt-4 temp 0.1, works best, but it's pricier
             tools=tools,
             step_callback=reportAgentStepsSync 
         )
@@ -547,7 +557,7 @@ class Meeting:
                 #"tasks": result["tasks_outputs"].dict(),
             } 
             self.sendDataSync(payload)
-        return self
+        return self 
 
     def vector_config(self, keyword="youtube"):
         # TODO: check if we have PINECONE_API_KEY in the environment and if not return chroma config
@@ -556,6 +566,7 @@ class Meeting:
             return {
                 "app": {
                     "config": {
+                        "id": f"{keyword}_pinecone",
                         "name": f"{keyword}_pinecone",
                     }
                 },
@@ -564,21 +575,22 @@ class Meeting:
                     "config": {
                         "metric": "cosine",
                         "vector_dimension": 1536, 
-                        "index_name": f"fenix-black-test",
-                    } 
-                },
+                        "index_name": f"fenix-black",
+                    }
+                }, 
             }
         # default is chroma vectordb config
         return {
             "app": {
                 "config": {
+                    "id": f"{keyword}_chroma",
                     "name": f"{keyword}_chroma",
                 }
             },
             "vectordb" : { 
                 "provider": "chroma",
                 "config": { 
-                    "collection_name": "fenix-black-meeting",
+                    "collection_name": "fenix-black-{keyword}",
                     "dir": "meetings-data",
                     "allow_reset": True,
                     #"vector_dimension": 1536, # openai embeddings
