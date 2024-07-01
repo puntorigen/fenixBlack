@@ -42,7 +42,7 @@ function Interview() {
           //rules={['/rules/base.txt']}
           onInit={(experts)=>{
             // avatar would hold an object with the avatar's name as the key and some metadata (like picture) as the value
-            console.log('interview experts',experts);
+            //console.log('interview experts',experts);
             setAvatars(experts);
           }}
           onDialog={(dialog)=>setDialog(dialog)} //transcription
@@ -50,11 +50,11 @@ function Interview() {
             console.log('meeting onFinish called',output);
             setInMeeting(false);
           }}>
-          <Stakeholder ref={testerPic} user_name="Pablo" />
+          <Stakeholder ref={testerPic} user_name="Pablo"  />
         </Meeting>
         {visible===true && (
             <>
-            <Chat experts={avatars}/>
+            <Chat experts={avatars} messages={dialog}/>
             <WiredCard elevation={2} style={{marginBottom:100, color:'white', textAlign:'left', width:'80%' }}>
                 <h2>Meeting Transcription</h2>
                 <span style={{ fontFamily:'sans-serif' }}>

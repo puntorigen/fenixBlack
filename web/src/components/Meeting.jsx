@@ -32,7 +32,8 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onInit,
     const [transcript, setTranscript] = useState([]);
     const addTranscript = (speaker,message,type='thought',role='coordinator') => {
         let obj = { speaker, role, type, message };
-        obj.time = new Date().toLocaleTimeString();
+        obj.date = new Date();
+        obj.time = obj.date.toLocaleTimeString();
         if (type === 'thought') {
             obj.full = `${obj.time} [${obj.role}] ${obj.speaker}: (THINKS: ${obj.message})`;
         } else if (type === 'intro') {
@@ -244,7 +245,7 @@ const Meeting = forwardRef(({ name, task, rules=[], outputKey, children, onInit,
             launchedInit.current[`num_experts${Object.keys(experts).length}`] = true;
             onInit && onInit(experts);
         }
-        console.log('debug experts',experts);
+        //console.log('debug experts',experts);
         //
     }, [experts, windowSize.width]);
 
