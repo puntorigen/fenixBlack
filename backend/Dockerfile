@@ -40,7 +40,7 @@ RUN pip install twilio
 RUN pip install groq 
 RUN pip install deepgram-sdk elevenlabs assemblyai
 RUN pip install -qU langchain-groq
-
+RUN pip install langcodes
 # Set the working directory
 WORKDIR /app
 

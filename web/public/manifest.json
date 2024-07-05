@@ -1,6 +1,6 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "FenixBlack",
+  "name": "FenixBlack - Visual Multi Agent AI Framework ",
   "icons": [
     {
       "src": "favicon.ico",
@@ -8,7 +8,7 @@
       "type": "image/x-icon"
     },
     {
-      "src": "logo192.png",
+      "src": "fenix192.png",
       "type": "image/png",
       "sizes": "192x192"
     },

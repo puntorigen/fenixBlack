@@ -53,10 +53,10 @@ class Meeting:
         try:
             print("DEBUG: send_data called (meeting_id:"+self.meeting_id+")")
             await self.manager.send_message(json.dumps(data), self.meeting_id)
-        except Exception as e:
+        except Exception as e: 
             print("DEBUG: send_data ERROR",e)
 
-    def adaptTextToPersonality(self, text: str, expert: ExpertModel, max_tokens=100):
+    def adaptTextToPersonality(self, text: str, expert: ExpertModel, max_tokens=200):
         from typing import Dict, Optional
         from pydantic import BaseModel, Field
         rules = ""
@@ -69,7 +69,7 @@ class Meeting:
             new_text: str = Field(None, description="New text adapted to the given personality using a maximum of 140 characters. Don't include either actions and/or action inputs.")
         
         system_prompt = "# act as an excellent and engaging writer, expert in adapting the given text to a specific given personality, style and voice. Always consider using a maximum of 140 characters, and always focus on the latest action being done. You speak like a friendly human, removing any unnecessary words and JSON objects and/or parameters."
-        if max_tokens > 100:
+        if max_tokens > 200:
             system_prompt = "# act as an excellent and engaging writer, expert in summarizing while adapting the given text to a specific given personality, style and voice, without loosing any content. You speak like a friendly human, removing any unnecessary words and JSON objects and/or parameters. If there's a conclusion or recommendations, always include them."
 
         adaptText = client_instructor_sync.chat.completions.create(
@@ -89,7 +89,7 @@ class Meeting:
                 """)},
             ],
             temperature=0.6,
-            max_tokens=max_tokens,
+            max_tokens=max_tokens, 
             stream=False,
         )
         print("Adapted TEXT FOR PERSONALITY: ", adaptText.model_dump())

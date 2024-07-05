@@ -121,7 +121,7 @@ async def websocket_endpoint_meeting(websocket: WebSocket, meeting_id: str):
                 await notify.from_tool("phone_call", "I'm preparing for the call")
                 # create an ExpertSolo instance with the expert data
                 call_expert_solo = ExpertSolo( 
-                    expert = call_expert,
+                    expert = call_expert, 
                     session_data = from_frontend["data"],
                     vector_config = from_frontend["data"]["config"], 
                     session_id = session_id, 
@@ -129,6 +129,7 @@ async def websocket_endpoint_meeting(websocket: WebSocket, meeting_id: str):
                     envs = session_envs,
                     public_url = public_url
                 )
+                await call_expert_solo.prepare() # prepare the agent before making the call (translate, pre-generate audios)
                 call_sessions[session_id]["expert_ref"] = call_expert_solo
                 call_sessions[session_id]["envs"] = session_envs
                 #await notify.from_tool("phone_call", "Expert ready to make call ..")                
@@ -201,17 +202,30 @@ async def call_status(session_id: str, meeting_id: str, request: Request):
     elif item.get("CallStatus", "") == "busy" or item.get("CallStatus", "") == "no-answer":
         # phone is busy
         print(f"Call ended ({item.get("CallStatus", "")}) for session {session_id} in meeting {meeting_id}")
-        await session_obj["notify_ref"].from_tool("phone_call","The user was was busy or declined the call")
+        await session_obj["notify_ref"].from_tool("phone_call","The user was busy or declined the call")
         await session_obj["notify_ref"].to_tool("phone_call_ended",{ "text":"Target phone was busy", "reason":"busy" })
         # also destroy the session
         del call_sessions[session_id] 
         return {"status": "OK", "message": "Call ended, because phone was busy"}
 
     elif item.get("CallStatus", "") == "completed":
-        # call ended 
+        # call ended, if user hanged up
+        # retrieve chat_history from expert of current session
+        chat_history = None
+        try:
+            chat_history = session_obj["expert_ref"].get_chat_history()
+        except Exception as e:
+            pass
         print(f"Call ended for session {session_id} in meeting {meeting_id}")
         await session_obj["notify_ref"].from_tool("phone_call","Call ended")
-        await session_obj["notify_ref"].to_tool("phone_call_ended",{ "text":"Phone call ended", "reason":"ended" })
+        payload = {
+            "text": "Phone call ended",
+            "reason": "ended",
+            "data": {
+                "chat_history": chat_history 
+            }
+        }
+        await session_obj["notify_ref"].to_tool("phone_call_ended",payload)
         # also destroy the session
         del call_sessions[session_id]
         return {"status": "OK", "message": "Call ended"}
@@ -225,7 +239,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, meeting_id: 
     global call_sessions
     await audio_manager.connect(websocket, meeting_id)
     audio_queue = asyncio.Queue()
-    callsid_queue = asyncio.Queue()
+    callsid_queue = asyncio.Queue() 
     session_obj = call_sessions[session_id]
     deepgram_ws = await deepgram_connect(session_obj["language"])
     stream_sids = {} #dict mapping callsid to streamSid
@@ -233,7 +247,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, meeting_id: 
     try:
         await asyncio.gather(
             deepgram_sender(deepgram_ws, audio_queue),
-            deepgram_receiver(deepgram_ws, callsid_queue, session_id, meeting_id, audio_manager, stream_sids),
+            deepgram_receiver(deepgram_ws, callsid_queue, session_id, meeting_id, audio_manager, stream_sids, websocket),
             twilio_receiver(websocket, audio_queue, callsid_queue, stream_sids)
         )
     except WebSocketDisconnect:
@@ -262,14 +276,14 @@ async def deepgram_sender(deepgram_ws, audio_queue):
             break
 
 # get the transcription 
-async def deepgram_receiver(deepgram_ws, callsid_queue, session_id, meeting_id, audio_manager, stream_sids):
+async def deepgram_receiver(deepgram_ws, callsid_queue, session_id, meeting_id, audio_manager, stream_sids, websocket):
     global call_managers
     global meeting_to_callsid
     callsid = await callsid_queue.get()
     meeting_to_callsid[meeting_id] = callsid
     if callsid not in call_managers:
         session_obj = call_sessions[session_id]
-        call_managers[callsid] = CallManager(audio_manager, session_obj, meeting_id, callsid, stream_sids, os.getenv("GROQ_API_KEY"), os.getenv("ELEVEN_LABS_API_KEY"))
+        call_managers[callsid] = CallManager(audio_manager, session_obj, meeting_id, callsid, stream_sids, websocket, os.getenv("GROQ_API_KEY"), os.getenv("ELEVEN_LABS_API_KEY"))
     call_manager = call_managers[callsid]
 
     try:

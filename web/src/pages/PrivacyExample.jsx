@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { WiredCard, WiredButton, WiredInput } from 'react-wired-elements';
 import { brandSchema, brochureSchema, privacyPolicy } from '../schemas';
+import Chat from '../components/Chat';
 
 import Meeting from '../components/Meeting';
 import AccountManager from '../experts/AccountManager';
@@ -10,7 +11,9 @@ function PrivacyExample() {
     const meetingPrivacy = useRef(null); 
     const [testTask, setTestTask] = useState('Check www.enecon.com');
     const [inMeeting, setInMeeting] = useState(false);
+    const [visible, setVisible] = useState(true);
     const [dialog, setDialog] = useState([]);
+    const [avatars, setAvatars] = useState({});
     return (
         <>
         <WiredInput 
@@ -37,6 +40,11 @@ function PrivacyExample() {
           outputKey="gdpr"
           //rules={['/rules/base.txt']}
           onDialog={(dialog)=>setDialog(dialog)}
+          onInit={(experts)=>{
+            // avatar would hold an object with the avatar's name as the key and some metadata (like picture) as the value
+            //console.log('interview experts',experts);
+            setAvatars(experts);
+          }}
           onFinish={(output)=>{
             console.log('meeting onFinish called',output);
             setInMeeting(false);
@@ -46,12 +54,12 @@ function PrivacyExample() {
             ['https://ico.org.uk/media/for-organisations/guide-to-the-general-data-protection-regulation-gdpr-1-0.pdf']
           } />
         </Meeting>
-        <WiredCard elevation={2} style={{marginBottom:100, color:'white', textAlign:'left', width:'80%' }}>
-        <h2>Meeting Transcription</h2>
-        <span style={{ fontFamily:'sans-serif' }}>
-          {dialog && dialog.map((d,i)=><p key={i}>{d.full}</p>)}
-        </span>
-        </WiredCard>
+        {visible===true && (
+            <>
+            <Chat experts={avatars} messages={dialog} showThoughts={false}/>
+            <br/><br/>
+            </>
+        )}
         </>
     );
 }

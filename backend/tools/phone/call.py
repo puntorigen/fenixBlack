@@ -139,9 +139,10 @@ class PhoneCall(BaseTool):
         response = loop.run_until_complete(self.call_loop(payload))
 
         print(f"DEBUG: Response from call_loop", response)
-    
+     
+        return response
         # Placeholder for the actual call logic 
-        return "Nothing to run yet." 
+        #return "Nothing to run yet." 
     
     def generate_md5_session_id(self, payload):
         hash_input = json.dumps(payload, sort_keys=True)
@@ -160,6 +161,10 @@ class PhoneCall(BaseTool):
                 if 'cmd' in message and message['cmd'] == 'phone_call_ended':
                     if message['session_id'] == payload['data']['session_id']:
                         print(f"End message for session_id received ({message['session_id']}). Closing connection. Received:",message)
+                        if message["data"]["data"]:
+                            print(f"Received FINAL message:",message["data"]["data"])
+                            final_message = message['data']['data'] # chat_history
+                            return True # Return True to indicate the connection should close
                         final_message = message
                         return True # Return True to indicate the connection should close
                 else: 

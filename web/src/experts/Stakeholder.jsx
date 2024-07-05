@@ -4,7 +4,7 @@ import { tools, avatar } from './constants';
 
 const Stakeholder = forwardRef(({
     id="stakeholder",
-    name="Julio",
+    name="Julia",
     age=23,
     target_phone="+12345678901", // international format "+1 234 567 8901
     target_language="es-CL",
@@ -22,7 +22,7 @@ const Stakeholder = forwardRef(({
         name,
         age,
         role: 'Stakeholder',
-        goal: `Represent the user on the team and is able to call the user once per session to ask for missing information.`,
+        goal: `Represent the user on the team and able to call the user once to ask for missing information.`,
         /*
         backstory: `# Act as a professional PR expert, that excels at representing the requesting task user within the team.
         # You have all the past knowledge of previous conversations with the user, and you use that source as the first reference.
@@ -57,7 +57,7 @@ const Stakeholder = forwardRef(({
             //[tools.query_visual_website]: { 'camera': 'Querying webpage visually ..' },
         }, 
         study: study,
-        max_num_iterations: 4,
+        max_num_iterations: 5,
         smart_level: 3, // 3 is the smartest
     };
     // add call tool if phone number is defined and not empty
@@ -69,7 +69,7 @@ const Stakeholder = forwardRef(({
                 number: target_phone, // the phone number to call (intl format)
                 language: target_language, // the language to use for the call
                 max_duration: 300, // 5 minute (300 seconds default)
-                voice_id: 'lXungVpcYL0ZWZJIiefW', // the elevenlabs voice id to use for the call
+                voice_id: 'RBnMinrYKeccY3vaUxlZ', // the elevenlabs voice id to use for the call
                 context: {
                     'user_name': user_name,
                     'user_role': user_role,

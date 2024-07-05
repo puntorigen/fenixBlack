@@ -2,14 +2,16 @@
 import time, asyncio, random, json, io
 import utils.ws_client as ws_client
 import tools.phone.utils as phone_utils
+from fastapi import WebSocketDisconnect
 
 class CallManager:
-    def __init__(self, audio_manager, session_obj, meeting_id, callsid, stream_sids, groq_api_key, eleven_labs_api_key, base_filler_threshold_ms=900, response_threshold_ms=2000, cooldown_period_ms=2000, extended_silence_ms=5000):
+    def __init__(self, audio_manager, session_obj, meeting_id, callsid, stream_sids, ws_audio, groq_api_key, eleven_labs_api_key, base_filler_threshold_ms=900, response_threshold_ms=2000, cooldown_period_ms=2000, extended_silence_ms=5000):
         self.audio_manager = audio_manager
         self.callsid = callsid
         self.stream_sids = stream_sids
         self.meeting_id = meeting_id
         self.session = session_obj
+        self.ws_audio = ws_audio
         # TODO: use the ExpertSolo class as the language_processor
         #self.language_processor = phone_utils.LanguageModelProcessor(self.session["expert_ref"].expert.name,groq_api_key)
         self.language_processor = self.session["expert_ref"]
@@ -41,15 +43,24 @@ class CallManager:
             if self.session["intro"]:
                 # speak intro message - TODO do this within the ExpertSolo class for adapting the intro to the target language
                 # and for using the voice_id from the ExpertSolo (do this here on init)
-                message = self.session["intro"]
+                #message = self.session["intro"]
                 # translate the message to the required language
                 # if language is not en, nor starts with en-
-                if self.session["language"] != "en" and not self.session["language"].startswith("en-"):
-                    message = await self.session["expert_ref"].translate_from_english(message)
-                    print(f"Translated intro message to {self.session['language']}: {message}")
-                self.last_response_time = time.time() * 1000  # Update the last response time
+                #if self.session["language"] != "en" and not self.session["language"].startswith("en-"):
+                #    message = await self.session["expert_ref"].translate_from_english(message)
+                #    print(f"Translated intro message to {self.session['language']}: {message}")
+                message = self.session["expert_ref"].translated_intro
+                await self.session["notify_ref"].from_tool("phone_call", f"[phone]: {message}")
                 audio_duration_ms = await self.send_audio(message, "")
                 self.spoken.append(message)  
+                self.last_response_time = time.time() * 1000  # Update the last response time
+                # make the expert say the FIRST question (translated); after the intro.
+                first_question = self.session["expert_ref"].current_question 
+                await self.session["notify_ref"].from_tool("phone_call", f"[phone]: {first_question}")
+                audio_duration_ms = await self.send_audio(first_question, message)
+                self.spoken.append(first_question) 
+                self.last_response_time = time.time() * 1000  # Update the last response time
+
             self.welcomed = True
         while True:
             await asyncio.sleep(min(self.filler_threshold_ms, self.response_threshold_ms) / 1000)
@@ -75,6 +86,11 @@ class CallManager:
                     await self.trigger_filler()
                     self.filler_triggered = True
 
+    async def generate_audio(self, text, previous_text=""):
+        # pre-generates the audio and caches it for later use
+        audio64, audio_duration_ms = self.synthethizer.get_audio_base64(text, previous_text)
+        return audio_duration_ms
+    
     async def send_audio(self, text, previous_text=""):
         audio64, audio_duration_ms = self.synthethizer.get_audio_base64(text, previous_text)
         stream_sid = self.stream_sids.get(self.callsid, None)
@@ -97,14 +113,15 @@ class CallManager:
         current_time = time.time() * 1000
         if full_sentence:
             is_complete = True
-            if full_sentence != prev_part:
-                test_start_time = time.time() * 1000
-                is_complete = await self.language_processor.is_complete_sentence(prev_part, full_sentence)
-                test_took = time.time() * 1000 - test_start_time
-                print(f"Test took {test_took} ms")
-                if self.not_complete_times > 1:
-                    print(f"not_complete_times>1, marking as complete for not repeating fillers too much")
-                    is_complete = True
+            # 4jul24, commented for now to avoid extra latency
+            #if full_sentence != prev_part:
+            #    test_start_time = time.time() * 1000
+            #    is_complete = await self.language_processor.is_complete_sentence(prev_part, full_sentence)
+            #    test_took = time.time() * 1000 - test_start_time
+            #    print(f"Test took {test_took} ms")
+            #    if self.not_complete_times > 1:
+            #        print(f"not_complete_times>1, marking as complete for not repeating fillers too much")
+            #        is_complete = True
 
             if is_complete == False:
                 # TODO: check with groq and instructor if this 'full_sentence' looks indeed like a full sentence or just a part of it
@@ -114,13 +131,13 @@ class CallManager:
                 if self.not_complete_times % 2 == 1:
                     audio_duration_ms = await self.send_audio("uhmm")
                 self.not_complete_times += 1
-                #self.reset_timer()
+                #self.reset_timer() 
             else:
                 self.not_complete_times = 0
                 print(f"[{current_time}] Processing response: {full_sentence}") # for {self.callsid}
                 await self.session["notify_ref"].from_tool("phone_call", f"[{self.session["user_name"]} said]: {full_sentence}")
-                response = self.language_processor.query(full_sentence)
-                #response = self.process_response(full_transcript)
+                response = await self.language_processor.query(full_sentence)
+                # say/notify the expert response
                 print(f"[{current_time}] Generated Response: {response}")
                 await self.session["notify_ref"].from_tool("phone_call", f"[phone]: {response}") #->{self.session["expert_ref"].expert.name}
                 # send the response to the audio_manager
@@ -132,6 +149,18 @@ class CallManager:
                 print(f"[{current_time}] Generated Audio duration: {audio_duration_seconds} seconds")
                 #asyncio.create_task(self.handle_response_delay(audio_duration_seconds))
                 self.transcript_collector.reset()  # Reset the transcript collector after processing
+
+                if self.session["expert_ref"].current_question is None:
+                    # we have no more questions, we should end the call
+                    # get the chat_history from the expert
+                    chat_history = self.session["expert_ref"].get_chat_history()
+                    # tell the tool to hangup
+                    await self.session["notify_ref"].to_tool("phone_call_ended",{ "cmd":"transcription", "data":chat_history })
+                    # sleep the goodbye audio duration before hanging up
+                    await asyncio.sleep(audio_duration_seconds)
+                    #raise WebSocketDisconnect
+                    await self.ws_audio.close(code=1000) # disconnect twilio socket (to hangup)
+
             self.reset_timer() 
 
     async def handle_response_delay(self, delay_seconds):
