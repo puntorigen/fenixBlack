@@ -4,6 +4,9 @@ Realtime Visual AI based multi-agent Framework
 ## Introduction
 This web framework simulates a virtual meeting environment where AI-driven avatars, each representing specialized experts, collaborate to complete designated tasks on a meeting. The system uses a ReactJS frontend and Python FastAPI backend, with communication facilitated through Websockets.
 
+<img width="1327" height="919" alt="fenix-agents" src="https://github.com/user-attachments/assets/a30307e2-10ff-4112-b0c4-115a23b4f260" />
+
+
 ## Features
 - **Dynamic Avatars**: Utilizes [@nice-avatar-svg/react](https://www.npmjs.com/package/@nice-avatar-svg/react) for real-time avatar updates.
 - **Interactive Meetings**: Avatars interact in a sequence within a virtual meeting space inspired by Google Meet.
